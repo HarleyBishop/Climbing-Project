@@ -75,7 +75,7 @@ class Send(models.Model):
 class Review(models.Model):
     comment = models.TextField()
     stars = models.IntegerField()
-    attempts = models.IntegerField(default=0)
+    attempts = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
 
     climb = models.ForeignKey('Climb', on_delete=models.CASCADE, related_name='reviews')
@@ -88,7 +88,6 @@ class Review(models.Model):
 # VIDEO TABLE
 class Video(models.Model):
     video_url = models.URLField()
-    thumbnail_url = models.URLField(blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     climb = models.ForeignKey('Climb', on_delete=models.CASCADE, related_name='videos')
