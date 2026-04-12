@@ -13,7 +13,7 @@ class Gym(models.Model):
     name = models.CharField(max_length=100)
     location = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)  
-
+    added_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='owner')
     def __str__(self):
         return self.name
 

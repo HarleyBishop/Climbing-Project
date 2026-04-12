@@ -26,6 +26,7 @@ class GymSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gym
         fields = ["name", "location", "is_active"]
+        read_only_fields = ['added_by']
         
 class WallSerializer(serializers.ModelSerializer):
     class Meta:
