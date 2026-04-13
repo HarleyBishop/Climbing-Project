@@ -1,14 +1,17 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Gym, Wall, Climb, GradeVote, Send, Review, Video
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 # Checks data passed ot seralizer and if the data is valid passes the data to create where a user can then be created
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'is_verified_setter', 'is_admin', 'date_joined']
-        read_only_fields = ['is_verified_setter', 'is_admin', 'date_joined']
+        fields = ['id', 'username', 'email', 'password', 'is_verified_setter', 'is_staff', 'date_joined']
+        read_only_fields = ['is_verified_setter', 'is_staff', 'date_joined']
 
         # Read_only_fields is similar to extra kwargs it does the same ting however extra kwargs is used for a range of configs like max lenght read and write only 
         extra_kwargs = {

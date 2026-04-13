@@ -148,4 +148,91 @@ class SendListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
- #       return Send.objects.filter(climb)
+        climb_id = self.kwargs.get("climb_id")
+        return Send.objects.filter(climb_id=climb_id)
+
+    def perform_create(self, serializer):
+        climb_id = self.kwargs.get("climb_id")
+        climb = get_object_or_404(Climb, id=climb_id)
+
+        # same pattern as GradeVote — update attempts if already sent
+        # rather than crashing on unique_together
+        Send.objects.update_or_create(
+            climb=climb,
+            user=self.request.user,
+            defaults={'attempts': serializer.validated_data['attempts']}
+        )
+
+
+class SendDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = SendSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        climb_id = self.kwargs.get("climb_id")
+        return Send.objects.filter(
+            user=self.request.user,
+            climb_id=climb_id
+        )
+
+
+# ─── Review ──────────────────────────────────────────────────────────────
+
+class ReviewListCreateView(generics.ListCreateAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        climb_id = self.kwargs.get("climb_id")
+        return Review.objects.filter(climb_id=climb_id)
+
+    def perform_create(self, serializer):
+        climb_id = self.kwargs.get("climb_id")
+        climb = get_object_or_404(Climb, id=climb_id)
+        serializer.save(
+            climb=climb,
+            user=self.request.user
+        )
+
+
+class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        climb_id = self.kwargs.get("climb_id")
+        return Review.objects.filter(
+            user=self.request.user,
+            climb_id=climb_id
+        )
+
+
+# ─── Video ──────────────────────────────────────────────────────────────
+
+class VideoListCreateView(generics.ListCreateAPIView):
+    serializer_class = VideoSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        climb_id = self.kwargs.get("climb_id")
+        return Video.objects.filter(climb_id=climb_id)
+
+    def perform_create(self, serializer):
+        climb_id = self.kwargs.get("climb_id")
+        climb = get_object_or_404(Climb, id=climb_id)
+        serializer.save(
+            climb=climb,
+            user=self.request.user
+        )
+
+
+class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = VideoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        climb_id = self.kwargs.get("climb_id")
+        return Video.objects.filter(
+            user=self.request.user,
+            climb_id=climb_id
+        )
