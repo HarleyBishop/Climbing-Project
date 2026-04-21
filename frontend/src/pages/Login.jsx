@@ -1,5 +1,9 @@
+import LoginRegisterForm from "../components/LoginRegisterComponents/LoginRegisterForm"
+
 function Login() {
-    return <div>Login</div>
+    return (
+        <LoginRegisterForm route="/api/token/" method="login" />
+    )
 }
 
 export default Login

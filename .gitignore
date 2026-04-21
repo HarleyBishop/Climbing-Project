@@ -1,7 +1,6 @@
 .env
-"node_modules/" 
-"venv/" 
-"*.pyc" 
-"db.sqlite3" 
-"__pycache__/" 
-".env" 
+node_modules/
+venv/
+*.pyc
+db.sqlite3
+__pycache__/

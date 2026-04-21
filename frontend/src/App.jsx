@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import CreateGym from "./pages/CreateGym";
 
 function Logout() {
   localStorage.clear();
@@ -38,6 +39,7 @@ function App() {
         <Route path="/register" element={<Register />}/>
         <Route path="*" element={<NotFound />}/>
         <Route path="Logout" element={<Logout/>}/>
+        <Route path="/create-gym" element={<CreateGym />} />
       </Routes>
     </BrowserRouter>
   );
