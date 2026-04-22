@@ -33,27 +33,40 @@ function LoginRegisterForm({route, method}) {
         }
     }
 
-    return <form onSubmit={handleSubmit} className="form-container">
-        <h1>{name}</h1>
-        <input className="form-input"
+    return <div>
+        <form onSubmit={handleSubmit} className="form-container flex flex-col items-center">
+        
+        <input className="w-full h-10 pl-3 form-input outline-1 outline-amber-900 rounded-sm mb-12 focus:bg-amber-100"
         type="text"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         placeholder="username"
         />
 
-        <input className="form-input"
+
+        <input className="w-full h-10 pl-3 form-input2 outline-1 outline-amber-900 rounded-sm mb-10 focus:bg-amber-100"
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder="password"
         />
         
-        <button className="form-button" type="submit">
+        <button className=" w-2/3 form-button outline-1 outline-amber-900 rounded-sm mb-3" type="submit">
             {name}
         </button>
 
+        {name === "Login" && (
+                <p className="text-sm text-amber-800 italic text-center">
+                    Don't have an account?{" "}
+                    <span onClick={() => navigate("/register")} className="text-amber-900 font-bold underline">
+                        Register
+                    </span>
+                </p>
+            )}
+        
+    
     </form>
+    </div>
 }
 
 export default LoginRegisterForm

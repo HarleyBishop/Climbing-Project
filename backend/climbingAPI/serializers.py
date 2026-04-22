@@ -28,42 +28,42 @@ class UserSerializer(serializers.ModelSerializer):
 class GymSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gym
-        fields = ["name", "location", "is_active"]
+        fields = ["id", "name", "location", "is_active"]
         read_only_fields = ['added_by']
         
 class WallSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wall
-        fields = ["name", "gym"]
+        fields = ["id", "name", "gym"]
         read_only_fields = ['gym']
 
 class ClimbSerializer(serializers.ModelSerializer):
     class Meta:
         model = Climb
-        fields = ["name", "colour", "image_url", "suggested_grade", "community_grade", "is_archived", "set_at", "wall", "added_by"]
+        fields = ["id", "name", "colour", "image_url", "suggested_grade", "community_grade", "is_archived", "set_at", "wall", "added_by"]
         read_only_fields = ['wall', 'added_by']
 
 class GradeVoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = GradeVote
-        fields = ["grade", "created_at", "climb", "user"]
+        fields = ["id", "grade", "created_at", "climb", "user"]
         read_only_fields = ['created_at', 'climb', 'user']
 
 class SendSerializer(serializers.ModelSerializer):
     class Meta:
         model = Send
-        fields = ["attempts", "sent_at", "climb", "user"]
+        fields = ["id", "attempts", "sent_at", "climb", "user"]
         read_only_fields = ['climb', 'user', 'sent_at']
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = ["comment", "stars", "attempts", "created_at", "climb", "user"]
+        fields = ["id", "comment", "stars", "attempts", "created_at", "climb", "user"]
         read_only_fields = ['climb', 'user', 'created_at']
 
 class VideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Video
-        fields = ["video_url", "uploaded_at", "climb", "user"]
+        fields = ["id", "video_url", "uploaded_at", "climb", "user"]
         read_only_fields = ['uploaded_at', 'climb', 'user']
 
