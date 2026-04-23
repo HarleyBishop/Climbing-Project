@@ -21,6 +21,7 @@ class Gym(models.Model):
 # WALL TABLE
 class Wall(models.Model):  
     name = models.CharField(max_length=100)
+    description = models.CharField(max_length=100)
     gym = models.ForeignKey('Gym', on_delete=models.CASCADE, related_name='walls')
 
     def __str__(self):

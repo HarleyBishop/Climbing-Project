@@ -10,7 +10,7 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'is_verified_setter', 'is_staff', 'date_joined']
+        fields = ['id', 'username', 'password', 'is_verified_setter', 'is_staff', 'date_joined']
         read_only_fields = ['is_verified_setter', 'is_staff', 'date_joined']
 
         # Read_only_fields is similar to extra kwargs it does the same ting however extra kwargs is used for a range of configs like max lenght read and write only 
@@ -34,7 +34,7 @@ class GymSerializer(serializers.ModelSerializer):
 class WallSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wall
-        fields = ["id", "name", "gym"]
+        fields = ["id", "name", "gym", "description"]
         read_only_fields = ['gym']
 
 class ClimbSerializer(serializers.ModelSerializer):
