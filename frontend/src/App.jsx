@@ -1,16 +1,12 @@
 import react from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreateGym from "./pages/CreateGym";
+import GymPage from "./pages/GymPage";
 
 function Logout() {
   localStorage.clear();
@@ -35,11 +31,19 @@ function App() {
           }
         />
 
-        <Route path="/login" element={<Login />}/>
-        <Route path="/register" element={<Register />}/>
-        <Route path="*" element={<NotFound />}/>
-        <Route path="Logout" element={<Logout/>}/>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="*" element={<NotFound />} />
+        <Route path="Logout" element={<Logout />} />
         <Route path="/create-gym" element={<CreateGym />} />
+        <Route
+          path="/gym/:id"
+          element={
+            <ProtectedRoute>
+              <GymPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
