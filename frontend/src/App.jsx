@@ -7,6 +7,7 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreateGym from "./pages/CreateGym";
 import GymPage from "./pages/GymPage";
+import AddClimb from "./pages/AddClimb";
 
 function Logout() {
   localStorage.clear();
@@ -44,6 +45,27 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/gym/:gymId/wall/:wallId/add-climb"
+          element={
+            <ProtectedRoute>
+              <AddClimb />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/gym/:gymId/wall/:wallId/climb/:climbId"
+          element={
+            <ProtectedRoute>
+              {/* Add the new page when done should be the climb one*/}
+            </ProtectedRoute>
+          }
+        />
+
+
+        
+
+
       </Routes>
     </BrowserRouter>
   );
