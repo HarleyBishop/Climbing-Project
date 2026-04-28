@@ -21,6 +21,7 @@ function GymPage() {
         ]);
         setGym(gymRes.data);
         setWalls(wallRes.data);
+        // will start at the first wall for button by default
         setSelectedWall(wallRes.data[0]);
       } catch (err) {
         console.log(err);
