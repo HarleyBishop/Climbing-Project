@@ -26,10 +26,19 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class GymSerializer(serializers.ModelSerializer):
+    # Instead of a column defines that methoids should be used for these values. Django auto looks for a method named get_(field_name) e.g. get_wall_count
+    wall_count = serializers.SerializerMethodField()
+    climb_count = serializers.SerializerMethodField()
     class Meta:
         model = Gym
-        fields = ["id", "name", "location", "is_active"]
+        fields = ["id", "name", "location", "is_active", "wall_count", "climb_count"]
         read_only_fields = ['added_by']
+    
+    def get_wall_count(self, obj):
+        return obj.walls.count()
+
+    def get_climb_count(self, obj):
+        return Climb.objects.filter(wall__gym=obj, is_archived=False).count()
         
 class WallSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,9 +47,10 @@ class WallSerializer(serializers.ModelSerializer):
         read_only_fields = ['gym']
 
 class ClimbSerializer(serializers.ModelSerializer):
+    wall_name = serializers.CharField(source='wall.name', read_only=True)
     class Meta:
         model = Climb
-        fields = ["id", "name", "colour", "image_url", "suggested_grade", "community_grade", "is_archived", "set_at", "wall", "added_by"]
+        fields = ["id", "name", "colour", "image_url", "suggested_grade", "community_grade", "is_archived", "set_at", "wall", "wall_name", "added_by"]
         read_only_fields = ['wall', 'added_by']
 
 class GradeVoteSerializer(serializers.ModelSerializer):
@@ -56,6 +66,8 @@ class SendSerializer(serializers.ModelSerializer):
         read_only_fields = ['climb', 'user', 'sent_at']
 
 class ReviewSerializer(serializers.ModelSerializer):
+    # Added so that username can be accessed for reviews in climb ui
+    username = serializers.CharField(source='user.username', read_only=True)
     class Meta:
         model = Review
         fields = ["id", "comment", "stars", "attempts", "created_at", "climb", "user"]
