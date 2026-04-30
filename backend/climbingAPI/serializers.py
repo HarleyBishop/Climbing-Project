@@ -70,7 +70,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     class Meta:
         model = Review
-        fields = ["id", "comment", "stars", "attempts", "created_at", "climb", "user"]
+        fields = ["id", "comment", "stars", "attempts", "created_at", "climb", "user","username"]
         read_only_fields = ['climb', 'user', 'created_at']
 
 class VideoSerializer(serializers.ModelSerializer):
