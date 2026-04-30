@@ -18,10 +18,10 @@ function GymCard({ gym, colour }) {
         <p className="text-xs italic text-amber-600 mb-2">{gym.location}</p>
         <div className="flex gap-2">
           <span className="text-xs px-3 py-1 rounded-full bg-orange-100 text-amber-800 italic">
-            {gym.wall_count} walls
+            {gym.wall_count} Walls
           </span>
             <span className="text-xs px-3 py-1 rounded-full bg-orange-100 text-amber-800 italic">
-            {gym.climb_count} walls
+            {gym.climb_count} Climbs
           </span>
           
           <span className={`text-xs px-3 py-1 rounded-full italic
