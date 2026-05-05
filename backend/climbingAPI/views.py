@@ -26,6 +26,16 @@ class CreateUserView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
 
+# For Profile Page
+class UserDetailView(generics.RetrieveAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = User.objects.all()
+    lookup_field = "id"
+    lookup_url_kwarg = "user_id"
+
+
+
 # ─── Gym ─────────────────────────────────────────────────────────────────────
 
 class GymListCreateView(generics.ListCreateAPIView):
@@ -175,6 +185,14 @@ class SendDetailView(generics.RetrieveUpdateDestroyAPIView):
             climb_id=climb_id
         )
 
+# User View for Profile
+class UserSendsView(generics.ListAPIView):
+    serializer_class = SendSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("user_id")
+        return Send.objects.filter(user_id=user_id)
 
 # ─── Review ──────────────────────────────────────────────────────────────
 
@@ -205,6 +223,16 @@ class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
             user=self.request.user,
             climb_id=climb_id
         )
+    
+#Profile Page View
+class UserReviewsView(generics.ListAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("user_id")
+        return Review.objects.filter(user_id=user_id)
+    
 
 
 # ─── Video ──────────────────────────────────────────────────────────────
@@ -236,3 +264,12 @@ class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
             user=self.request.user,
             climb_id=climb_id
         )
+    
+ # Profile Page View   
+class UserVideosView(generics.ListAPIView):
+    serializer_class = VideoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("user_id")
+        return Video.objects.filter(user_id=user_id)

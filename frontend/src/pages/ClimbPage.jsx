@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../api";
 import { useParams, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import Navbar from "../components/Navbar";
 
 const COLOUR_MAP = {
     "Green":  "#4a8c5c",
@@ -143,15 +144,11 @@ function ClimbPage() {
   return (
     <div className="min-h-screen bg-orange-50 font-serif">
 
-      {/* navbar */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-amber-200">
-        <div onClick={() => navigate(`/gym/${gymId}`)} className="text-amber-700 italic text-sm cursor-pointer">
-          ‹ Slab wall
-        </div>
-        <div className="w-9 h-9 rounded-full bg-stone-300 flex items-center justify-center text-sm font-bold text-stone-600">
-          JS
-        </div>
-      </div>
+      
+
+
+
+      <Navbar showBack backLabel={climb?.wall_name || "Back"} backPath={`/gym/${gymId}`} />
 
       {/* colour hero */}
       <div className="w-full h-44 flex items-end p-4 gap-2" style={{ background: colour }}>

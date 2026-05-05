@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api";
 import ClimbCard from "../components/ClimbDashboardComponents/ClimbCard";
+import Navbar from "../components/Navbar";
 
 function GymPage() {
   const { id } = useParams();
@@ -48,13 +49,7 @@ function GymPage() {
   return (
     <div className="min-h-screen bg-orange-50 font-serif">
 
-      {/* navbar */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-amber-200">
-        <h3 className="text-amber-900 font-bold italic text-xl">Beta Board</h3>
-        <div className="w-9 h-9 rounded-full bg-stone-300 flex items-center justify-center text-sm font-bold text-stone-600">
-          JS
-        </div>
-      </div>
+      <Navbar showBack backLabel="Back to gyms" backPath="/" />
 
       <div className="max-w-2xl mx-auto px-6 py-8">
 

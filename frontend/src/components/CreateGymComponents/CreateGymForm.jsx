@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import api from "../../api"
 import WallCard from "./WallCard"
 import AddWallForm from "./AddWallForm"
+import Navbar from "../../components/Navbar";
 
 function CreateGymForm() {
     const [gymName, setGymName] = useState("")
@@ -42,6 +43,8 @@ function CreateGymForm() {
     }
 
     return (
+        <div>
+        <Navbar showBack backLabel="Back" backPath="/" />
         <div className="max-w-xl mx-auto px-6 py-10 font-serif">
             <h1 className="text-3xl font-bold italic text-amber-900 mb-1">Set up your gym</h1>
             <p className="text-sm italic text-amber-700 mb-8">Fill in the details and add your walls.</p>
@@ -105,6 +108,7 @@ function CreateGymForm() {
                     Cancel
                 </button>
             </div>
+        </div>
         </div>
     )
 }

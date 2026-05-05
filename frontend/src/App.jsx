@@ -9,6 +9,7 @@ import CreateGym from "./pages/CreateGym";
 import GymPage from "./pages/GymPage";
 import AddClimb from "./pages/AddClimb";
 import ClimbPage from "./pages/ClimbPage";
+import Profile from "./pages/Profile"
 
 function Logout() {
   localStorage.clear();
@@ -32,7 +33,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<NotFound />} />
@@ -46,14 +46,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/gym/:gymId/wall/:wallId/add-climb"
+        <Route
+          path="/gym/:gymId/wall/:wallId/add-climb"
           element={
             <ProtectedRoute>
               <AddClimb />
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/gym/:gymId/wall/:wallId/climb/:climbId"
           element={
@@ -62,11 +62,23 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-
-        
-
-
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        // someone else's profile
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
