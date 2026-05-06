@@ -79,17 +79,11 @@ function Profile() {
 
             <div className="max-w-2xl mx-auto px-6 py-8">
 
-                {/* back */}
-                <div
-                    onClick={() => navigate(-1)}
-                    className="text-amber-700 italic text-sm mb-6 cursor-pointer"
-                >
-                    ‹ Back
-                </div>
+                
 
                 {/* profile header */}
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-full bg-amber-200 flex items-center justify-center text-2xl font-bold text-amber-900 flex-shrink-0">
+                    <div className="w-16 h-16 rounded-full bg-amber-200 flex items-center justify-center text-2xl font-bold text-amber-900 shrink-0">
                         {initials}
                     </div>
                     <div>
@@ -108,7 +102,7 @@ function Profile() {
                 {/* home gym */}
                 {homeGym && (
                     <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
-                        <div className="w-3 h-3 rounded-full bg-emerald-600 flex-shrink-0" />
+                        <div className="w-3 h-3 rounded-full bg-emerald-600 shrink-0" />
                         <div>
                             <p className="text-xs italic text-amber-500 uppercase tracking-widest">Home gym</p>
                             <p className="text-sm font-bold italic text-amber-900">{homeGym}</p>
@@ -145,7 +139,7 @@ function Profile() {
                             className="flex overflow-hidden rounded-xl border border-amber-200 bg-amber-50 cursor-pointer hover:border-amber-400 transition-colors"
                         >
                             <div
-                                className="w-2 flex-shrink-0"
+                                className="w-2 shrink-0"
                                 style={{ background: COLOUR_MAP[send.climb_colour] || "#c9a98a" }}
                             />
                             <div className="flex-1 px-4 py-3">

@@ -4,6 +4,7 @@ import { jwtDecode } from "jwt-decode"
 function Navbar({ showBack, backLabel, backPath }) {
     const navigate = useNavigate()
     const token = localStorage.getItem("access")
+    // TODO:  NEED TO ADD USERNAME TO TOKEN OR RETRIEVE USERNAME FROM AN API CALL
     const username = token ? jwtDecode(token).username : ""
     const initials = username?.slice(0, 2).toUpperCase()
 

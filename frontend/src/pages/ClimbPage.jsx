@@ -144,10 +144,6 @@ function ClimbPage() {
   return (
     <div className="min-h-screen bg-orange-50 font-serif">
 
-      
-
-
-
       <Navbar showBack backLabel={climb?.wall_name || "Back"} backPath={`/gym/${gymId}`} />
 
       {/* colour hero */}

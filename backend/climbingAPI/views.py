@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticate
 from .models import Climb, Wall, Gym, GradeVote, Send, Review, Video
 from django.shortcuts import get_object_or_404
 from django.db.models import Avg
+from rest_framework.response import Response
 
 # NOTES FOR SELF:
 # QuerySet: The quesry set is simply defining which objects the request should be in relation to. e.g. a generic post will include all as there is not specific object required and nothing is being retrieved
@@ -57,6 +58,10 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # for safe methods (GET) return any gym
+        # for unsafe methods (PUT, DELETE) only return gyms owned by this user
+        if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return Gym.objects.all()
         return Gym.objects.filter(added_by=self.request.user)
 
 
@@ -108,7 +113,13 @@ class ClimbDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # for safe methods (GET) return any gym
+        # for unsafe methods (PUT, DELETE) only return gyms owned by this user
+        if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return Climb.objects.all()
         return Climb.objects.filter(added_by=self.request.user)
+    
+    
 
 
 # ─── Grade Vote ──────────────────────────────────────────────────────────────
@@ -273,3 +284,54 @@ class UserVideosView(generics.ListAPIView):
     def get_queryset(self):
         user_id = self.kwargs.get("user_id")
         return Video.objects.filter(user_id=user_id)
+
+
+# ─── LeaderBoard View ──────────────────────────────────────────────────────────────
+class GymLeaderboardView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, gym_id):
+
+        def grade_to_points(grade):
+            if grade <= 2: return 10
+            elif grade <= 4: return 20
+            elif grade <= 6: return 40
+            elif grade <= 8: return 70
+            elif grade <= 10: return 100
+            else: return 150
+
+        
+        active_climbs = Climb.objects.filter(
+            #
+            wall__gym_id=gym_id,
+            is_archived = False
+        )
+
+        # Get all the sneds for the climbs in the gym
+        sends = Send.objects.filter(climb__in=active_climbs).select_related('user', 'climb')
+
+        # calculate pointe for each user
+        user_points = {}
+        for send in sends:
+            uid = send.user.id
+            pts = grade_to_points(send.climb.suggested_grade)
+            if uid not in user_points:
+                user_points[uid] = {
+                    'user_id': uid,
+                    'username': send.user.username,
+                    'points': 0,
+                    'send_count': 0,
+                }
+            user_points[uid]['points'] += pts
+            user_points[uid]['send_count'] += 1
+
+
+        # sort by points descending
+        ranked = sorted(user_points.values(), key=lambda x: x['points'], reverse=True)
+
+        # add rank number
+        for i, entry in enumerate(ranked):
+            entry['rank'] = i + 1
+
+        
+        return Response(ranked)

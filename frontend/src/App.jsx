@@ -9,7 +9,8 @@ import CreateGym from "./pages/CreateGym";
 import GymPage from "./pages/GymPage";
 import AddClimb from "./pages/AddClimb";
 import ClimbPage from "./pages/ClimbPage";
-import Profile from "./pages/Profile"
+import Profile from "./pages/Profile";
+import Leaderboard from "./pages/Leaderboard"
 
 function Logout() {
   localStorage.clear();
@@ -70,12 +71,21 @@ function App() {
             </ProtectedRoute>
           }
         />
-        // someone else's profile
+        
         <Route
           path="/profile/:userId"
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/gym/:gymId/leaderboard"
+          element={
+            <ProtectedRoute>
+              <Leaderboard />
             </ProtectedRoute>
           }
         />

@@ -38,4 +38,7 @@ urlpatterns = [
     path('users/<int:user_id>/sends/', views.UserSendsView.as_view(), name='user-sends'),
     path('users/<int:user_id>/reviews/', views.UserReviewsView.as_view(), name='user-reviews'),
     path('users/<int:user_id>/videos/', views.UserVideosView.as_view(), name='user-videos'),
+
+    # ─── Leaderboard Stats View ────────────────────────────────────────────────────
+    path('gyms/<int:gym_id>/leaderboard/', views.GymLeaderboardView.as_view(), name='leaderboard'),
 ]
