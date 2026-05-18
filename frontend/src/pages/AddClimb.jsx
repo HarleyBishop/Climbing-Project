@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api";
+import Navbar from "../components/Navbar";
 
 const GRADES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -54,21 +55,10 @@ function AddClimb() {
 
   return (
     <div className="min-h-screen bg-orange-50 font-serif">
-      <div className="flex items-center justify-between px-8 py-4 border-b border-amber-200">
-        <h3 className="text-amber-900 font-bold italic text-xl">Beta Board</h3>
-        <div className="w-9 h-9 rounded-full bg-stone-300 flex items-center justify-center text-sm font-bold text-stone-600">
-          JS
-        </div>
-      </div>
+      {/* navbar handles back arrow and avatar — old hardcoded navbar removed */}
+      <Navbar showBack backLabel="Back to gym" backPath={`/gym/${gymId}`} />
 
       <div className="max-w-xl mx-auto px-6 py-8">
-        <div
-          onClick={() => navigate(`/gym/${gymId}`)}
-          className="text-amber-700 italic text-sm mb-6 cursor-pointer"
-        >
-          ‹ Back to gym
-        </div>
-
         <h1 className="text-3xl font-bold italic text-amber-900 mb-1">
           Add a new climb
         </h1>
@@ -109,11 +99,7 @@ function AddClimb() {
                   onClick={() => setColour(c.name)}
                   style={{ background: c.bg }}
                   className={`w-8 h-8 rounded-full border-2 transition-all
-                                        ${
-                                          colour === c.name
-                                            ? "border-amber-900 scale-110"
-                                            : "border-transparent"
-                                        }`}
+                    ${colour === c.name ? "border-amber-900 scale-110" : "border-transparent"}`}
                 />
               ))}
             </div>
@@ -130,11 +116,11 @@ function AddClimb() {
                   type="button"
                   onClick={() => setGrade(g)}
                   className={`px-3 py-1 rounded-full text-sm italic border transition-colors
-                                        ${
-                                          grade === g
-                                            ? "bg-amber-900 text-amber-50 border-amber-900"
-                                            : "border-amber-300 text-amber-800 hover:border-amber-500"
-                                        }`}
+                    ${
+                      grade === g
+                        ? "bg-amber-900 text-amber-50 border-amber-900"
+                        : "border-amber-300 text-amber-800 hover:border-amber-500"
+                    }`}
                 >
                   V{g}
                 </button>

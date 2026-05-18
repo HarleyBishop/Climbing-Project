@@ -32,4 +32,13 @@ urlpatterns = [
     # ─── Video ────────────────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/<int:climb_id>/videos/', views.VideoListCreateView.as_view(), name='video-list'),
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/<int:climb_id>/videos/<int:pk>/', views.VideoDetailView.as_view(), name='video-detail'),
+
+    # ─── Profile Page Views ────────────────────────────────────────────────────
+    path('users/<int:user_id>/', views.UserDetailView.as_view(), name='user-detail'),
+    path('users/<int:user_id>/sends/', views.UserSendsView.as_view(), name='user-sends'),
+    path('users/<int:user_id>/reviews/', views.UserReviewsView.as_view(), name='user-reviews'),
+    path('users/<int:user_id>/videos/', views.UserVideosView.as_view(), name='user-videos'),
+
+    # ─── Leaderboard Stats View ────────────────────────────────────────────────────
+    path('gyms/<int:gym_id>/leaderboard/', views.GymLeaderboardView.as_view(), name='leaderboard'),
 ]
