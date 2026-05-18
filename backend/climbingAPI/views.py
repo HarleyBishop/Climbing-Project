@@ -3,7 +3,7 @@ from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db.models import Avg
+from django.db.models import Avg, Max
 from .serializers import (
     UserSerializer, ClimbSerializer, WallSerializer, GymSerializer,
     GradeVoteSerializer, SendSerializer, ReviewSerializer, VideoSerializer
@@ -58,6 +58,17 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Gym.objects.all()
         return Gym.objects.filter(added_by=self.request.user)
 
+class MyGymsView(generics.ListAPIView):
+    serializer_class = GymSerializer
+    permission_classes = [IsAuthenticated]
+
+
+    def get_queryset(self):
+        return Gym.objects.filter(
+            walls__climbs__sends__user=self.request.user
+        ).annotate(
+            last_send=Max('walls__climbs__sends__sent_at')
+        ).order_by('-last_send').distinct()
 
 # ─── Wall ────────────────────────────────────────────────────────────────────
 

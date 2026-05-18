@@ -7,6 +7,7 @@ urlpatterns = [
 
     # ─── Gym ─────────────────────────────────────────────────────────────────
     path('gyms/', views.GymListCreateView.as_view(), name='gym-list'),
+    path('gyms/my-gyms/', views.MyGymsView.as_view(), name='my-gyms'), # User Specific GYM collection. Needs to be above gyms/int:id because it will think its a id otherwise
     path('gyms/<int:pk>/', views.GymDetailView.as_view(), name='gym-detail'),
 
     # ─── Wall ────────────────────────────────────────────────────────────────
@@ -41,4 +42,6 @@ urlpatterns = [
 
     # ─── Leaderboard Stats View ────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/leaderboard/', views.GymLeaderboardView.as_view(), name='leaderboard'),
+
+    
 ]

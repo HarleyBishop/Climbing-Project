@@ -18,14 +18,13 @@ function Home() {
         <p className="text-amber-700 italic text-sm mb-10">
           Pick your gym to see the current climbs.
         </p>
-        <p className="text-xs font-bold tracking-widest text-amber-700 mb-4">
-          YOUR GYMS
-        </p>
+
         <GymList />
+
 
         <button
             onClick={() => navigate(`/create-gym`)}
-            className="w-full py-3 rounded-xl bg-amber-900 text-amber-50 font-bold italic font-serif disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-amber-900 text-amber-50 font-bold italic font-serif disabled:opacity-50 mt-3"
           >
             Create A Gym
           </button>

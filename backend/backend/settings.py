@@ -31,7 +31,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 #Change and puyt in env after basic func is working 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SECRET_KEY = 'django-insecure-3$1fh^pv9qigpc2t57b1j)ug&b!p8u!x@0qzok_hz*j-4pd3fb'
+SECRET_KEY = os.environ.get("SECRET_KEY")
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # SECURITY WARNING: don't run with debug turned on in production!
