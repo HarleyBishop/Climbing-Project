@@ -1,40 +1,37 @@
-from django.shortcuts import render
 from django.contrib.auth import get_user_model
 from rest_framework import generics
-from .serializers import UserSerializer, ClimbSerializer, WallSerializer, GymSerializer, GradeVoteSerializer, SendSerializer, ReviewSerializer, VideoSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticatedOrReadOnly
-from .models import Climb, Wall, Gym, GradeVote, Send, Review, Video
+from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Avg
-from rest_framework.response import Response
+from .serializers import (
+    UserSerializer, ClimbSerializer, WallSerializer, GymSerializer,
+    GradeVoteSerializer, SendSerializer, ReviewSerializer, VideoSerializer
+)
+from .models import Climb, Wall, Gym, GradeVote, Send, Review, Video
 
 # NOTES FOR SELF:
-# QuerySet: The quesry set is simply defining which objects the request should be in relation to. e.g. a generic post will include all as there is not specific object required and nothing is being retrieved
-# Serializer: When a request comes through DRF passes request data through the Serializer to ensure the data is valid and matches the models defined params and also converts data tyo correct data format
+# QuerySet: defines which objects the request operates on
+# Serializer: validates incoming data and converts to correct format
 
-
-
-# Use the User set in the settings not the defualt Django User model
 User = get_user_model()
 
 
 # ─── User ────────────────────────────────────────────────────────────────────
 
 class CreateUserView(generics.CreateAPIView):
-    # QuerySet is which db objects to work with
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
 
-# For Profile Page
 class UserDetailView(generics.RetrieveAPIView):
+    # Returns a single user by id for the profile page
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     queryset = User.objects.all()
     lookup_field = "id"
     lookup_url_kwarg = "user_id"
-
 
 
 # ─── Gym ─────────────────────────────────────────────────────────────────────
@@ -43,23 +40,20 @@ class GymListCreateView(generics.ListCreateAPIView):
     serializer_class = GymSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-    # Query set defined here is what should be returned on a get request
     def get_queryset(self):
         return Gym.objects.all()
 
     def perform_create(self, serializer):
-        # Serializer save is needed to inject the data not included in the post request as it is read only in the serializer
+        # added_by is read only in serializer so injected here from the logged in user
         serializer.save(added_by=self.request.user)
 
 
-# the get here is used to get a single record
 class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = GymSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # for safe methods (GET) return any gym
-        # for unsafe methods (PUT, DELETE) only return gyms owned by this user
+        # any user can read a gym, only the creator can edit or delete
         if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
             return Gym.objects.all()
         return Gym.objects.filter(added_by=self.request.user)
@@ -69,7 +63,7 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class WallListCreateView(generics.ListCreateAPIView):
     serializer_class = WallSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]  
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
         gym_id = self.kwargs.get("gym_id")
@@ -81,17 +75,6 @@ class WallListCreateView(generics.ListCreateAPIView):
         serializer.save(gym=gym)
 
 
-#class WallDetailView(generics.RetrieveUpdateDestroyAPIView):
-#   serializer_class = WallSerializer
-#    permission_classes = [IsAuthenticated]
-#
-#    def get_queryset(self):
-#        # Wall has no added_by so just let any authenticated user edit for now
-        # you can tighten this later when you add added_by to Wall
-#        gym_id = self.kwargs.get("gym_id")
-#        return Wall.objects.filter(gym_id=gym_id)
-
-
 # ─── Climb ───────────────────────────────────────────────────────────────────
 
 class ClimbListCreateView(generics.ListCreateAPIView):
@@ -100,6 +83,7 @@ class ClimbListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         wall_id = self.kwargs.get("wall_id")
+        # archived climbs are never returned to the frontend
         return Climb.objects.filter(wall_id=wall_id, is_archived=False)
 
     def perform_create(self, serializer):
@@ -113,38 +97,34 @@ class ClimbDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # for safe methods (GET) return any gym
-        # for unsafe methods (PUT, DELETE) only return gyms owned by this user
+        # any user can read a climb, only the setter can edit or delete
         if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
             return Climb.objects.all()
         return Climb.objects.filter(added_by=self.request.user)
-    
-    
 
 
 # ─── Grade Vote ──────────────────────────────────────────────────────────────
 
 class GradeVoteListCreateView(generics.ListCreateAPIView):
     serializer_class = GradeVoteSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly] 
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
         climb_id = self.kwargs.get("climb_id")
-        return GradeVote.objects.filter(climb_id=climb_id)  
+        return GradeVote.objects.filter(climb_id=climb_id)
 
     def perform_create(self, serializer):
         climb_id = self.kwargs.get("climb_id")
         climb = get_object_or_404(Climb, id=climb_id)
 
-        # update_or_create means if this user already voted, update their grade
-        # rather than throwing a unique_together error
-        vote, created = GradeVote.objects.update_or_create(
+        # update_or_create prevents duplicate votes from unique_together constraint
+        GradeVote.objects.update_or_create(
             climb=climb,
             user=self.request.user,
             defaults={'grade': serializer.validated_data['grade']}
         )
 
-        # recalculate community grade on the climb every time a vote changes
+        # recalculate and cache community grade on the climb after every vote
         avg = GradeVote.objects.filter(climb=climb).aggregate(Avg('grade'))['grade__avg']
         climb.community_grade = round(avg, 1) if avg else None
         climb.save()
@@ -152,18 +132,16 @@ class GradeVoteListCreateView(generics.ListCreateAPIView):
 
 class GradeVoteDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = GradeVoteSerializer
-    permission_classes = [IsAuthenticated] 
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         climb_id = self.kwargs.get("climb_id")
         # users can only edit or delete their own votes
-        return GradeVote.objects.filter(user=self.request.user,
-                                        climb_id=climb_id
-                                        )
-    
+        return GradeVote.objects.filter(user=self.request.user, climb_id=climb_id)
 
 
-# ─── Send  ──────────────────────────────────────────────────────────────
+# ─── Send ────────────────────────────────────────────────────────────────────
+
 class SendListCreateView(generics.ListCreateAPIView):
     serializer_class = SendSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -176,8 +154,7 @@ class SendListCreateView(generics.ListCreateAPIView):
         climb_id = self.kwargs.get("climb_id")
         climb = get_object_or_404(Climb, id=climb_id)
 
-        # same pattern as GradeVote — update attempts if already sent
-        # rather than crashing on unique_together
+        # update_or_create prevents duplicate sends from unique_together constraint
         Send.objects.update_or_create(
             climb=climb,
             user=self.request.user,
@@ -191,13 +168,11 @@ class SendDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         climb_id = self.kwargs.get("climb_id")
-        return Send.objects.filter(
-            user=self.request.user,
-            climb_id=climb_id
-        )
+        return Send.objects.filter(user=self.request.user, climb_id=climb_id)
 
-# User View for Profile
+
 class UserSendsView(generics.ListAPIView):
+    # Returns all sends for a specific user — used on the profile page
     serializer_class = SendSerializer
     permission_classes = [IsAuthenticated]
 
@@ -205,7 +180,8 @@ class UserSendsView(generics.ListAPIView):
         user_id = self.kwargs.get("user_id")
         return Send.objects.filter(user_id=user_id)
 
-# ─── Review ──────────────────────────────────────────────────────────────
+
+# ─── Review ──────────────────────────────────────────────────────────────────
 
 class ReviewListCreateView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
@@ -218,10 +194,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         climb_id = self.kwargs.get("climb_id")
         climb = get_object_or_404(Climb, id=climb_id)
-        serializer.save(
-            climb=climb,
-            user=self.request.user
-        )
+        serializer.save(climb=climb, user=self.request.user)
 
 
 class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -230,23 +203,20 @@ class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         climb_id = self.kwargs.get("climb_id")
-        return Review.objects.filter(
-            user=self.request.user,
-            climb_id=climb_id
-        )
-    
-#Profile Page View
+        return Review.objects.filter(user=self.request.user, climb_id=climb_id)
+
+
 class UserReviewsView(generics.ListAPIView):
+    # Returns all reviews for a specific user — used on the profile page
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user_id = self.kwargs.get("user_id")
         return Review.objects.filter(user_id=user_id)
-    
 
 
-# ─── Video ──────────────────────────────────────────────────────────────
+# ─── Video ───────────────────────────────────────────────────────────────────
 
 class VideoListCreateView(generics.ListCreateAPIView):
     serializer_class = VideoSerializer
@@ -259,10 +229,7 @@ class VideoListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         climb_id = self.kwargs.get("climb_id")
         climb = get_object_or_404(Climb, id=climb_id)
-        serializer.save(
-            climb=climb,
-            user=self.request.user
-        )
+        serializer.save(climb=climb, user=self.request.user)
 
 
 class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -271,13 +238,11 @@ class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         climb_id = self.kwargs.get("climb_id")
-        return Video.objects.filter(
-            user=self.request.user,
-            climb_id=climb_id
-        )
-    
- # Profile Page View   
+        return Video.objects.filter(user=self.request.user, climb_id=climb_id)
+
+
 class UserVideosView(generics.ListAPIView):
+    # Returns all videos for a specific user — used on the profile page
     serializer_class = VideoSerializer
     permission_classes = [IsAuthenticated]
 
@@ -286,7 +251,8 @@ class UserVideosView(generics.ListAPIView):
         return Video.objects.filter(user_id=user_id)
 
 
-# ─── LeaderBoard View ──────────────────────────────────────────────────────────────
+# ─── Leaderboard ─────────────────────────────────────────────────────────────
+
 class GymLeaderboardView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -300,17 +266,11 @@ class GymLeaderboardView(generics.ListAPIView):
             elif grade <= 10: return 100
             else: return 150
 
-        
-        active_climbs = Climb.objects.filter(
-            #
-            wall__gym_id=gym_id,
-            is_archived = False
-        )
-
-        # Get all the sneds for the climbs in the gym
+        # only count sends on active non-archived climbs in this gym
+        active_climbs = Climb.objects.filter(wall__gym_id=gym_id, is_archived=False)
         sends = Send.objects.filter(climb__in=active_climbs).select_related('user', 'climb')
 
-        # calculate pointe for each user
+        # calculate points per user
         user_points = {}
         for send in sends:
             uid = send.user.id
@@ -325,13 +285,9 @@ class GymLeaderboardView(generics.ListAPIView):
             user_points[uid]['points'] += pts
             user_points[uid]['send_count'] += 1
 
-
-        # sort by points descending
+        # sort highest points first and add rank number
         ranked = sorted(user_points.values(), key=lambda x: x['points'], reverse=True)
-
-        # add rank number
         for i, entry in enumerate(ranked):
             entry['rank'] = i + 1
 
-        
         return Response(ranked)

@@ -1,7 +1,13 @@
 import GymList from "../components/HomePageComponents/GymList";
 import Navbar from "../components/Navbar";
+import { useNavigate } from "react-router-dom"
+
+
 
 function Home() {
+  const navigate = useNavigate();
+
+
   return (
     <div className="bg-orange-50 font-serif min-h-screen">
       <Navbar />
@@ -16,6 +22,13 @@ function Home() {
           YOUR GYMS
         </p>
         <GymList />
+
+        <button
+            onClick={() => navigate(`/create-gym`)}
+            className="w-full py-3 rounded-xl bg-amber-900 text-amber-50 font-bold italic font-serif disabled:opacity-50"
+          >
+            Create A Gym
+          </button>
       </div>
     </div>
   );

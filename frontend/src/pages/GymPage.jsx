@@ -64,6 +64,8 @@ function GymPage() {
           {gym.name}
         </h1>
         <p className="text-sm italic text-amber-700 mb-2">{gym.location}</p>
+
+        <div className="flex items-center justify-between mb-4">
         <span
           className={`text-xs px-3 py-1 rounded-full font-bold italic
           ${gym.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
@@ -77,6 +79,7 @@ function GymPage() {
         >
           View leaderboard
         </button>
+        </div>
 
         <div className="h-px bg-amber-200 my-6" />
 

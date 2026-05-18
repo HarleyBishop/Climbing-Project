@@ -5,6 +5,16 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+#Class to add username to the JWT token https://django-rest-framework-simplejwt.readthedocs.io/en/latest/customizing_token_claims.html
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['username'] = user.username
+        return token
+
 
 # Checks data passed to serializer and if the data is valid passes the data to create where a user can then be created
 class UserSerializer(serializers.ModelSerializer):

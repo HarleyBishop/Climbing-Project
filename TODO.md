@@ -1,13 +1,7 @@
 🔴 Must
-Fix JWT username in Navbar
 Fix auth + refresh token logic
-Secure env variables (SECRET_KEY)
-Implement roles (admin/setter)
-Restrict climb creation
-Clean views
 Switch to PostgreSQL
 Fix leaderboard rank
-
 
 🟡 Should
 Pagination (gyms + climbs)
@@ -23,3 +17,9 @@ Code cleanup (comments)
 Leaderboards per climb
 Optional ranking features
 Add ranks like chall and diamond to leaderboard
+
+
+Complete:
+Clean Views.py
+Fix JWT username in Navbar
+Secure env variables (SECRET_KEY)
