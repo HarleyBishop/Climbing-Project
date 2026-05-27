@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticatedOrReadOnly, BasePermission
 from rest_framework.response import Response
@@ -6,7 +7,10 @@ from rest_framework.views import APIView
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db.models import Avg, Count, Max, Q
+import re
+import requests as http_requests
 from .serializers import (
+    CustomTokenObtainPairSerializer,
     UserSerializer, ClimbSerializer, WallSerializer, GymSerializer,
     GradeVoteSerializer, SendSerializer, ReviewSerializer, VideoSerializer,
     CompetitionSerializer, DivisionSerializer, CompRoundSerializer,
@@ -51,6 +55,90 @@ def gym_queryset_with_counts():
             distinct=True
         )
     )
+
+
+# ─── OAuth helpers ───────────────────────────────────────────────────────────
+
+def _get_or_create_oauth_user(sub_field, sub_value, email):
+    """
+    Find an existing user by their OAuth sub ID, or by email, or create one.
+    Setters are blocked from using OAuth — they must log in with username/password.
+    Returns (user, error_string).
+    """
+    # 1. Find by OAuth sub
+    if sub_value:
+        user = User.objects.filter(**{sub_field: sub_value}).first()
+        if user:
+            return user, None
+
+    # 2. Find by email (link OAuth sub to existing account)
+    if email:
+        user = User.objects.filter(email=email).first()
+        if user:
+            if user.is_verified_setter:
+                return None, 'Setter accounts must log in with username and password.'
+            setattr(user, sub_field, sub_value)
+            user.save()
+            return user, None
+
+    # 3. Create new climber account — OAuth accounts are always climbers
+    base = re.sub(r'[^a-zA-Z0-9]', '', (email or '').split('@')[0]) or 'climber'
+    username, counter = base, 1
+    while User.objects.filter(username=username).exists():
+        username = f'{base}{counter}'
+        counter += 1
+
+    user = User.objects.create_user(
+        username=username,
+        email=email or '',
+        is_verified_setter=False,
+    )
+    setattr(user, sub_field, sub_value)
+    user.set_unusable_password()
+    user.save()
+    return user, None
+
+
+def _oauth_response(user):
+    """Issue our JWT pair for a successfully authenticated OAuth user."""
+    refresh = CustomTokenObtainPairSerializer.get_token(user)
+    return Response({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+    })
+
+
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        access_token = request.data.get('access_token')
+        if not access_token:
+            return Response({'detail': 'access_token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            resp = http_requests.get(
+                'https://www.googleapis.com/oauth2/v3/userinfo',
+                headers={'Authorization': f'Bearer {access_token}'},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            info = resp.json()
+        except Exception as exc:
+            return Response({'detail': f'Failed to verify Google token: {exc}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        sub = info.get('sub')
+        if not sub:
+            return Response({'detail': 'Invalid Google token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user, error = _get_or_create_oauth_user(
+            sub_field='google_id',
+            sub_value=sub,
+            email=info.get('email', ''),
+        )
+        if error:
+            return Response({'detail': error}, status=status.HTTP_403_FORBIDDEN)
+        return _oauth_response(user)
 
 
 # ─── User ────────────────────────────────────────────────────────────────────

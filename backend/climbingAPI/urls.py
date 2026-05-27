@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     # ─── User ────────────────────────────────────────────────────────────────
     path('user/register/', views.CreateUserView.as_view(), name='register'),
+    path('auth/google/', views.GoogleLoginView.as_view(), name='google-login'),
 
     # ─── Gym ─────────────────────────────────────────────────────────────────
     path('gyms/', views.GymListCreateView.as_view(), name='gym-list'),

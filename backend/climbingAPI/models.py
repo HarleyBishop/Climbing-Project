@@ -5,6 +5,7 @@ from django.utils import timezone
 # Use this instead of Django's default User
 class User(AbstractUser):
     is_verified_setter = models.BooleanField(default=False)
+    google_id = models.CharField(max_length=200, blank=True, null=True, unique=True)
 
     def __str__(self):
         return self.username

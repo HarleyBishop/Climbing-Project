@@ -32,6 +32,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 #Change and puyt in env after basic func is working 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 SECRET_KEY = os.environ.get("SECRET_KEY")
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # SECURITY WARNING: don't run with debug turned on in production!
