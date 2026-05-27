@@ -10,11 +10,15 @@ import GymPage from "./pages/GymPage";
 import AddClimb from "./pages/AddClimb";
 import ClimbPage from "./pages/ClimbPage";
 import Profile from "./pages/Profile";
-import Leaderboard from "./pages/Leaderboard"
+import Leaderboard from "./pages/Leaderboard";
+import ArchivedClimbs from "./pages/ArchivedClimbs";
+import CompetitionList from "./pages/CompetitionList";
+import CompetitionPage from "./pages/CompetitionPage";
+import CreateCompetition from "./pages/CreateCompetition";
+import { isSetter } from "./auth";
 
-function Logout() {
-  localStorage.clear();
-  return <Navigate to="/login" />;
+function SetterRoute({ children }) {
+  return isSetter() ? children : <Navigate to="/" />;
 }
 
 function RegisterAndLogout() {
@@ -37,8 +41,16 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<NotFound />} />
-        <Route path="Logout" element={<Logout />} />
-        <Route path="/create-gym" element={<CreateGym />} />
+        <Route
+          path="/create-gym"
+          element={
+            <ProtectedRoute>
+              <SetterRoute>
+                <CreateGym />
+              </SetterRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/gym/:id"
           element={
@@ -51,7 +63,9 @@ function App() {
           path="/gym/:gymId/wall/:wallId/add-climb"
           element={
             <ProtectedRoute>
-              <AddClimb />
+              <SetterRoute>
+                <AddClimb />
+              </SetterRoute>
             </ProtectedRoute>
           }
         />
@@ -71,7 +85,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
         <Route
           path="/profile/:userId"
           element={
@@ -80,7 +93,26 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
+        <Route
+          path="/gym/:gymId/wall/:wallId/archived"
+          element={
+            <ProtectedRoute>
+              <ArchivedClimbs />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gym/:gymId/competitions"
+          element={<ProtectedRoute><CompetitionList /></ProtectedRoute>}
+        />
+        <Route
+          path="/gym/:gymId/competitions/create"
+          element={<ProtectedRoute><SetterRoute><CreateCompetition /></SetterRoute></ProtectedRoute>}
+        />
+        <Route
+          path="/gym/:gymId/competitions/:compId"
+          element={<ProtectedRoute><CompetitionPage /></ProtectedRoute>}
+        />
         <Route
           path="/gym/:gymId/leaderboard"
           element={

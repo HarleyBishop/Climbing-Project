@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 
 # Use this instead of Django's default User
 class User(AbstractUser):
@@ -96,3 +97,114 @@ class Video(models.Model):
 
     def __str__(self):
         return f"{self.user} video on {self.climb}"
+
+
+# ─── Competition System ───────────────────────────────────────────────────────
+
+class Competition(models.Model):
+    QUALIFIER = 'qualifier'
+    FINALS = 'finals'
+    TYPE_CHOICES = [(QUALIFIER, 'Qualifier'), (FINALS, 'Finals')]
+
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    rules = models.TextField(blank=True)
+    comp_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    top_x_advance = models.IntegerField(null=True, blank=True)
+
+    gym = models.ForeignKey('Gym', on_delete=models.CASCADE, related_name='competitions')
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='created_comps')
+    # Finals competitions can reference the qualifier they follow
+    linked_qualifier = models.OneToOneField(
+        'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='linked_finals'
+    )
+
+    @property
+    def status(self):
+        now = timezone.now()
+        if now < self.start_date:
+            return 'upcoming'
+        elif now <= self.end_date:
+            return 'open'
+        return 'closed'
+
+    def __str__(self):
+        return f"{self.title} ({self.comp_type})"
+
+
+class Division(models.Model):
+    name = models.CharField(max_length=100)
+    competition = models.ForeignKey('Competition', on_delete=models.CASCADE, related_name='divisions')
+
+    def __str__(self):
+        return f"{self.name} – {self.competition.title}"
+
+
+class CompRound(models.Model):
+    name = models.CharField(max_length=100)
+    order = models.IntegerField(default=1)
+    competition = models.ForeignKey('Competition', on_delete=models.CASCADE, related_name='rounds')
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.name} – {self.competition.title}"
+
+
+class CompClimb(models.Model):
+    competition = models.ForeignKey('Competition', on_delete=models.CASCADE, related_name='comp_climbs')
+    climb = models.ForeignKey('Climb', on_delete=models.CASCADE, related_name='comp_entries')
+    points_value = models.IntegerField(default=100)
+    comp_round = models.ForeignKey('CompRound', null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        unique_together = ['competition', 'climb']
+
+    def __str__(self):
+        return f"{self.climb.name} in {self.competition.title}"
+
+
+class CompRegistration(models.Model):
+    competition = models.ForeignKey('Competition', on_delete=models.CASCADE, related_name='registrations')
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='comp_registrations')
+    division = models.ForeignKey('Division', null=True, blank=True, on_delete=models.SET_NULL)
+    registered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['competition', 'user']
+
+    def __str__(self):
+        return f"{self.user.username} in {self.competition.title}"
+
+
+class CompSend(models.Model):
+    comp_climb = models.ForeignKey('CompClimb', on_delete=models.CASCADE, related_name='comp_sends')
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='comp_sends')
+    attempts = models.IntegerField(default=1)
+    logged_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['comp_climb', 'user']
+
+    def __str__(self):
+        return f"{self.user.username} sent {self.comp_climb.climb.name} (comp)"
+
+
+class FinalsResult(models.Model):
+    comp_climb = models.ForeignKey('CompClimb', on_delete=models.CASCADE, related_name='finals_results')
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='finals_results')
+    topped = models.BooleanField(default=False)
+    top_attempts = models.IntegerField(null=True, blank=True)
+    zoned = models.BooleanField(default=False)
+    zone_attempts = models.IntegerField(null=True, blank=True)
+    recorded_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='judged_results')
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['comp_climb', 'user']
+
+    def __str__(self):
+        return f"{self.user.username} – {self.comp_climb.climb.name} finals"
