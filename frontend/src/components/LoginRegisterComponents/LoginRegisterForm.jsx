@@ -6,26 +6,32 @@ import { ACCESS_TOKEN, REFRESH_TOKEN } from "../../constants";
 function LoginRegisterForm({route, method}) {
     const [username, setUsername] = useState("")
     const [password, setPassword] = useState("")
+    const [isSetterRole, setIsSetterRole] = useState(false)
     const [loading, setLoading] = useState("")
     const navigate = useNavigate()
 
     const name = method === "login" ? "Login" : "Register"
+    const isRegister = method === "register"
 
     const handleSubmit = async (e) =>
     {
         setLoading(true);
         e.preventDefault()
 
-        try{const res = await api.post(route, {username, password})
-        if(method === "login") {
-            localStorage.setItem(ACCESS_TOKEN, res.data.access);
-            localStorage.setItem(REFRESH_TOKEN, res.data.refresh)
-            navigate("/")
+        try {
+            const payload = { username, password }
+            if (isRegister) payload.is_verified_setter = isSetterRole
+
+            const res = await api.post(route, payload)
+            if(method === "login") {
+                localStorage.setItem(ACCESS_TOKEN, res.data.access);
+                localStorage.setItem(REFRESH_TOKEN, res.data.refresh)
+                navigate("/")
+            }
+            else{
+                navigate("/login")
+            }
         }
-        else{
-            navigate("/login")
-        }
-    }
         catch(error){
             alert(error)
         } finally {
@@ -35,7 +41,7 @@ function LoginRegisterForm({route, method}) {
 
     return <div>
         <form onSubmit={handleSubmit} className="form-container flex flex-col items-center">
-        
+
         <input className="w-full h-10 pl-3 form-input outline-1 outline-amber-900 rounded-sm mb-12 focus:bg-amber-100"
         type="text"
         value={username}
@@ -50,7 +56,35 @@ function LoginRegisterForm({route, method}) {
         onChange={(e) => setPassword(e.target.value)}
         placeholder="password"
         />
-        
+
+        {isRegister && (
+            <div className="w-full mb-8">
+                <p className="text-xs italic text-amber-800 mb-2">I am registering as a…</p>
+                <div className="flex gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setIsSetterRole(false)}
+                        className={`flex-1 py-2 rounded-lg text-sm italic border transition-colors
+                            ${!isSetterRole
+                                ? "bg-amber-900 text-amber-50 border-amber-900"
+                                : "border-amber-300 text-amber-800 hover:border-amber-500"}`}
+                    >
+                        Climber
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsSetterRole(true)}
+                        className={`flex-1 py-2 rounded-lg text-sm italic border transition-colors
+                            ${isSetterRole
+                                ? "bg-amber-900 text-amber-50 border-amber-900"
+                                : "border-amber-300 text-amber-800 hover:border-amber-500"}`}
+                    >
+                        Setter / Gym Owner
+                    </button>
+                </div>
+            </div>
+        )}
+
         <button className=" w-2/3 form-button outline-1 outline-amber-900 rounded-sm mb-3" type="submit">
             {name}
         </button>
@@ -63,8 +97,8 @@ function LoginRegisterForm({route, method}) {
                     </span>
                 </p>
             )}
-        
-    
+
+
     </form>
     </div>
 }

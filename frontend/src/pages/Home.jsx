@@ -1,12 +1,13 @@
 import GymList from "../components/HomePageComponents/GymList";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom"
+import { isSetter } from "../auth"
 
 
 
 function Home() {
   const navigate = useNavigate();
-
+  const canCreate = isSetter();
 
   return (
     <div className="bg-orange-50 font-serif min-h-screen">
@@ -21,13 +22,14 @@ function Home() {
 
         <GymList />
 
-
-        <button
+        {canCreate && (
+          <button
             onClick={() => navigate(`/create-gym`)}
             className="w-full py-3 rounded-xl bg-amber-900 text-amber-50 font-bold italic font-serif disabled:opacity-50 mt-3"
           >
             Create A Gym
           </button>
+        )}
       </div>
     </div>
   );

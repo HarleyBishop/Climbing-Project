@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'rest_framework',
     "corsheaders",
     "climbingAPI",
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [

@@ -17,32 +17,33 @@ function GymList() {
   const [myGyms, setMyGyms] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    Promise.all([
-      api.get("/api/gyms/"),
-      api.get("/api/gyms/my-gyms/"),
-    ])
+    Promise.all([api.get("/api/gyms/"), api.get("/api/gyms/my-gyms/")])
       .then(([allRes, myRes]) => {
         setAllGyms(allRes.data);
         setMyGyms(myRes.data);
         setLoading(false);
       })
       .catch((err) => {
-        console.log(err);
+        setError("Failed to load gyms. Please refresh and try again.");
         setLoading(false);
       });
   }, []);
 
   const filteredGyms = search.trim()
-    ? allGyms.filter((g) =>
-        g.name.toLowerCase().includes(search.toLowerCase()) ||
-        g.location.toLowerCase().includes(search.toLowerCase())
+    ? allGyms.filter(
+        (g) =>
+          g.name.toLowerCase().includes(search.toLowerCase()) ||
+          g.location.toLowerCase().includes(search.toLowerCase()),
       )
     : null;
 
   if (loading)
     return <div className="text-amber-700 italic text-sm">Loading...</div>;
+
+  if (error) return <div className="text-red-600 italic text-sm">{error}</div>;
 
   return (
     <div className="flex flex-col">
@@ -72,7 +73,9 @@ function GymList() {
             RESULTS
           </p>
           {filteredGyms.length === 0 ? (
-            <p className="text-sm italic text-amber-500 mb-6">No gyms match your search.</p>
+            <p className="text-sm italic text-amber-500 mb-6">
+              No gyms match your search.
+            </p>
           ) : (
             filteredGyms.map((gym, index) => (
               <GymCard
@@ -107,15 +110,19 @@ function GymList() {
           <p className="text-xs font-bold tracking-widest text-amber-700 mt-6 mb-4">
             ALL GYMS
           </p>
-          <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1">
-            {allGyms.map((gym, index) => (
-              <GymCardMini
-                key={gym.id}
-                gym={gym}
-                colour={GYM_COLOURS[index % GYM_COLOURS.length]}
-              />
-            ))}
-          </div>
+          {allGyms.length === 0 ? (
+            <p className="text-sm italic text-amber-500">No gyms yet.</p>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1">
+              {allGyms.map((gym, index) => (
+                <GymCardMini
+                  key={gym.id}
+                  gym={gym}
+                  colour={GYM_COLOURS[index % GYM_COLOURS.length]}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

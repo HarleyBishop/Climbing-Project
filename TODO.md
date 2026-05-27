@@ -1,7 +1,6 @@
 🔴 Must
-Fix auth + refresh token logic
 Switch to PostgreSQL
-Fix leaderboard rank
+
 
 🟡 Should
 Pagination (gyms + climbs)
@@ -18,8 +17,3 @@ Leaderboards per climb
 Optional ranking features
 Add ranks like chall and diamond to leaderboard
 
-
-Complete:
-Clean Views.py
-Fix JWT username in Navbar
-Secure env variables (SECRET_KEY)

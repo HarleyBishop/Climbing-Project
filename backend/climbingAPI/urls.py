@@ -12,10 +12,11 @@ urlpatterns = [
 
     # ─── Wall ────────────────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/walls/', views.WallListCreateView.as_view(), name='wall-list'),
-    #path('gyms/<int:gym_id>/walls/<int:pk>/', views.WallDetailView.as_view(), name='wall-detail'),
+    path('gyms/<int:gym_id>/walls/<int:wall_id>/archive-climbs/', views.ArchiveWallClimbsView.as_view(), name='archive-wall-climbs'),
 
     # ─── Climb ───────────────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/', views.ClimbListCreateView.as_view(), name='climb-list'),
+    path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/archived/', views.ClimbArchivedListView.as_view(), name='climb-archived'),
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/<int:pk>/', views.ClimbDetailView.as_view(), name='climb-detail'),
 
     # ─── Grade Vote ──────────────────────────────────────────────────────────
@@ -43,5 +44,21 @@ urlpatterns = [
     # ─── Leaderboard Stats View ────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/leaderboard/', views.GymLeaderboardView.as_view(), name='leaderboard'),
 
-    
+    # ─── All Gym Climbs (for comp building) ───────────────────────────────────────
+    path('gyms/<int:gym_id>/all-climbs/', views.GymClimbsView.as_view(), name='gym-all-climbs'),
+
+    # ─── Competition ──────────────────────────────────────────────────────────────
+    path('gyms/<int:gym_id>/competitions/', views.CompetitionListCreateView.as_view(), name='competition-list'),
+    path('competitions/<int:comp_id>/', views.CompetitionDetailView.as_view(), name='competition-detail'),
+    path('competitions/<int:comp_id>/divisions/', views.DivisionListCreateView.as_view(), name='division-list'),
+    path('competitions/<int:comp_id>/rounds/', views.CompRoundListCreateView.as_view(), name='round-list'),
+    path('competitions/<int:comp_id>/climbs/', views.CompClimbListCreateView.as_view(), name='comp-climb-list'),
+    path('competitions/<int:comp_id>/climbs/<int:pk>/', views.CompClimbDetailView.as_view(), name='comp-climb-detail'),
+    path('competitions/<int:comp_id>/registrations/', views.CompRegistrationListView.as_view(), name='comp-registrations'),
+    path('competitions/<int:comp_id>/register/', views.CompRegisterView.as_view(), name='comp-register'),
+    path('competitions/<int:comp_id>/sends/', views.CompSendListView.as_view(), name='comp-sends'),
+    path('competitions/<int:comp_id>/log-send/', views.CompSendCreateView.as_view(), name='comp-log-send'),
+    path('competitions/<int:comp_id>/leaderboard/', views.QualifierLeaderboardView.as_view(), name='qualifier-leaderboard'),
+    path('competitions/<int:comp_id>/finals-results/', views.FinalsResultListCreateView.as_view(), name='finals-results'),
+    path('competitions/<int:comp_id>/finals-leaderboard/', views.FinalsLeaderboardView.as_view(), name='finals-leaderboard'),
 ]
