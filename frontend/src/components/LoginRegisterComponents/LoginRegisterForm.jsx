@@ -31,16 +31,13 @@ function LoginRegisterForm({route, method}) {
     const googleLogin = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
             try {
-                console.log("Google token response:", tokenResponse);
                 const res = await api.post("/api/auth/google/", { access_token: tokenResponse.access_token });
                 handleOAuthSuccess(res.data);
             } catch (err) {
-                console.error("Backend Google auth error:", err?.response?.data, err);
                 handleOAuthError(err);
             }
         },
         onError: (err) => {
-            console.error("Google OAuth flow error:", err);
             alert("Google sign-in failed. Please try again.");
         },
     });

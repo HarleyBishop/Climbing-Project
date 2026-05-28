@@ -46,7 +46,6 @@ function AddClimb() {
       });
       navigate(`/gym/${gymId}`);
     } catch (err) {
-      console.log(err.response?.data);
       setError("Failed to add climb. Please try again.");
     } finally {
       setLoading(false);
