@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import Navbar from "../components/Navbar";
+import { getRank, RankBadge, RANKS, MAGNUS_RANK } from "../utils/rankUtils";
 
 const GRADE_POINTS = [
   { label: "V0 – V2", min: 0, max: 2, points: 10 },
@@ -69,6 +70,7 @@ function Leaderboard() {
 
   const myRank = rankings.find((r) => r.user_id === currentUserId);
   const maxPoints = rankings[0]?.points || 1;
+  const totalPlayers = rankings.length;
 
   const rankColour = (rank) => {
     if (rank === 1) return "text-amber-600";
@@ -125,9 +127,15 @@ function Leaderboard() {
                 <p className="font-bold italic text-amber-900">
                   @{myRank.username}
                 </p>
-                <span className="text-xs italic px-2 py-1 rounded-full bg-orange-100 text-amber-800 mt-1 inline-block">
-                  You
-                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs italic px-2 py-0.5 rounded-full bg-orange-100 text-amber-800">
+                    You
+                  </span>
+                  <RankBadge
+                    rank={getRank(myRank.points, myRank.rank)}
+                    iconSize={16}
+                  />
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-xl font-bold italic text-amber-900">
@@ -149,6 +157,7 @@ function Leaderboard() {
           {rankings.map((entry) => {
             const isMe = entry.user_id === currentUserId;
             const barWidth = Math.round((entry.points / maxPoints) * 100);
+            const rank = getRank(entry.points, entry.rank);
 
             return (
               <div
@@ -190,7 +199,8 @@ function Leaderboard() {
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <RankBadge rank={rank} iconSize={14} />
                   <p className="text-sm font-bold italic text-amber-900">
                     {entry.points} pts
                   </p>
@@ -207,6 +217,41 @@ function Leaderboard() {
               No sends logged yet — be the first!
             </p>
           )}
+        </div>
+
+        <div className="h-px bg-amber-200 mb-6" />
+
+        {/* rank tiers */}
+        <p className="text-xs font-bold tracking-widest text-amber-700 mb-3">
+          RANK TIERS
+        </p>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl overflow-hidden mb-6">
+          <div className="bg-orange-100 px-4 py-2 flex justify-between">
+            <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">Rank</span>
+            <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">Points required</span>
+          </div>
+          {RANKS.map((r, i) => (
+            <div key={r.name} className="flex items-center gap-3 px-4 py-2 border-t border-amber-200">
+              <RankBadge rank={r} iconSize={16} />
+              <div className="flex-1 h-1.5 bg-amber-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.round((r.min / 4500) * 100)}%`,
+                    backgroundColor: r.color,
+                    minWidth: i === 0 ? '4px' : undefined,
+                  }}
+                />
+              </div>
+              <span className="text-xs italic text-amber-700 w-20 text-right shrink-0">
+                {r.min === 0 ? '0 pts' : `${r.min.toLocaleString()}+ pts`}
+              </span>
+            </div>
+          ))}
+          <div className="flex items-center gap-3 px-4 py-2 border-t border-amber-200">
+            <RankBadge rank={MAGNUS_RANK} iconSize={16} />
+            <p className="flex-1 text-xs italic text-amber-600">Top 20 climbers at this gym</p>
+          </div>
         </div>
 
         <div className="h-px bg-amber-200 mb-6" />

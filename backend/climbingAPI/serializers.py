@@ -6,11 +6,16 @@ from .models import (
 )
 from django.contrib.auth import get_user_model
 
+# get_user_model() is preferred over importing User directly because it
+# respects the AUTH_USER_MODEL setting — safe to call even after the line above.
 User = get_user_model()
 
-#Class to add username to the JWT token https://django-rest-framework-simplejwt.readthedocs.io/en/latest/customizing_token_claims.html
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+
+# Adds custom claims to the JWT payload so the frontend can read username and
+# role from the token itself without a separate /me API call.
+# The token is decoded client-side in auth.js using jwt-decode.
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -20,43 +25,44 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
 
-# Checks data passed to serializer and if the data is valid passes the data to create where a user can then be created
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'password', 'is_verified_setter', 'is_staff', 'date_joined']
         read_only_fields = ['is_staff', 'date_joined']
-
-        # Read_only_fields is similar to extra kwargs it does the same thing however extra kwargs is used for a range of configs like max length read and write only
         extra_kwargs = {
+            # write_only ensures password is never returned in a response,
+            # only accepted on create/update.
             'password': {'write_only': True}
         }
 
-    # Create function only needed for user class as django .create_user function is used to hash the password field
-    # Create function only used when something needs to occur before creation such as validating data
     def create(self, validated_data):
+        # create_user (not create) hashes the password before saving.
+        # Calling plain .create() would store it in plaintext.
         return User.objects.create_user(**validated_data)
 
 
 class GymSerializer(serializers.ModelSerializer):
-    # SerializerMethodFields read from annotated values on the queryset (set in views.py).
-    # This avoids N+1 queries — no extra DB hit per gym.
+    # SerializerMethodField reads from values annotated onto the queryset in
+    # gym_queryset_with_counts(). This avoids an extra query per gym when
+    # listing many gyms — the count is computed once in the DB with COUNT().
     wall_count = serializers.SerializerMethodField()
     climb_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Gym
-        fields = ["id", "name", "location", "is_active", "wall_count", "climb_count"]
+        fields = ["id", "name", "location", "is_active", "wall_count", "climb_count", "lat", "lng"]
         read_only_fields = ['added_by']
 
     def get_wall_count(self, obj):
-        # Use the annotated value if present, otherwise fall back to a query
+        # hasattr check: if the queryset was annotated, use that value.
+        # Fallback to a live query for cases where a single Gym is fetched
+        # without going through gym_queryset_with_counts (e.g. nested serializers).
         if hasattr(obj, 'wall_count'):
             return obj.wall_count
         return obj.walls.count()
 
     def get_climb_count(self, obj):
-        # Use the annotated value if present, otherwise fall back to a query
         if hasattr(obj, 'climb_count'):
             return obj.climb_count
         return Climb.objects.filter(wall__gym=obj, is_archived=False).count()
@@ -66,10 +72,14 @@ class WallSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wall
         fields = ["id", "name", "gym", "description"]
+        # gym is injected in perform_create from the URL kwarg — it's not
+        # something the client should be able to set directly.
         read_only_fields = ['gym']
 
 
 class ClimbSerializer(serializers.ModelSerializer):
+    # Denormalising wall_name here avoids a second request from the frontend
+    # just to display which wall a climb is on.
     wall_name = serializers.CharField(source='wall.name', read_only=True)
 
     class Meta:
@@ -82,17 +92,24 @@ class GradeVoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = GradeVote
         fields = ["id", "grade", "created_at", "climb", "user"]
+        # climb and user are injected server-side — the client only sends grade.
         read_only_fields = ['created_at', 'climb', 'user']
 
 
 class SendSerializer(serializers.ModelSerializer):
-    # Extra fields needed for profile page to display climb info and navigate to the climb
+    # These fields traverse FK relationships (send → climb → wall → gym) to
+    # give the profile page everything it needs in a single response. Without
+    # them the frontend would need one extra request per send to get climb info.
     climb_name = serializers.CharField(source='climb.name', read_only=True)
     climb_colour = serializers.CharField(source='climb.colour', read_only=True)
     climb_grade = serializers.IntegerField(source='climb.suggested_grade', read_only=True)
+    # Used by the frontend rank system to filter archived sends out of points
+    # calculations — archived climbs shouldn't count toward your rank.
+    climb_is_archived = serializers.BooleanField(source='climb.is_archived', read_only=True)
     wall_name = serializers.CharField(source='climb.wall.name', read_only=True)
     gym_name = serializers.CharField(source='climb.wall.gym.name', read_only=True)
-    # FK ids needed so profile page can build navigate URL to the climb
+    # IDs are needed so the profile page can build a navigation URL to the
+    # climb detail page (/gym/:gymId/wall/:wallId/climb/:climbId).
     climb_id = serializers.IntegerField(source='climb.id', read_only=True)
     wall_id = serializers.IntegerField(source='climb.wall.id', read_only=True)
     gym_id = serializers.IntegerField(source='climb.wall.gym.id', read_only=True)
@@ -102,8 +119,7 @@ class SendSerializer(serializers.ModelSerializer):
         fields = [
             "id", "attempts", "sent_at",
             "climb", "user",
-            # profile page fields
-            "climb_id", "climb_name", "climb_colour", "climb_grade",
+            "climb_id", "climb_name", "climb_colour", "climb_grade", "climb_is_archived",
             "wall_id", "wall_name",
             "gym_id", "gym_name",
         ]
@@ -111,13 +127,12 @@ class SendSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    # Added so that username can be accessed for reviews in climb ui
+    # username is included so the climb page can display who wrote each review
+    # without a separate user lookup per review.
     username = serializers.CharField(source='user.username', read_only=True)
-    # Extra fields needed for profile page
     climb_name = serializers.CharField(source='climb.name', read_only=True)
     wall_name = serializers.CharField(source='climb.wall.name', read_only=True)
     gym_name = serializers.CharField(source='climb.wall.gym.name', read_only=True)
-    # FK ids needed so profile page can build navigate URL to the climb
     climb_id = serializers.IntegerField(source='climb.id', read_only=True)
     wall_id = serializers.IntegerField(source='climb.wall.id', read_only=True)
     gym_id = serializers.IntegerField(source='climb.wall.gym.id', read_only=True)
@@ -127,7 +142,6 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = [
             "id", "comment", "stars", "attempts", "created_at",
             "climb", "user", "username",
-            # profile page fields
             "climb_id", "climb_name",
             "wall_id", "wall_name",
             "gym_id", "gym_name",
@@ -136,11 +150,9 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class VideoSerializer(serializers.ModelSerializer):
-    # Extra fields needed for profile page
     climb_name = serializers.CharField(source='climb.name', read_only=True)
     wall_name = serializers.CharField(source='climb.wall.name', read_only=True)
     gym_name = serializers.CharField(source='climb.wall.gym.name', read_only=True)
-    # FK ids needed so profile page can build navigate URL to the climb
     climb_id = serializers.IntegerField(source='climb.id', read_only=True)
     wall_id = serializers.IntegerField(source='climb.wall.id', read_only=True)
     gym_id = serializers.IntegerField(source='climb.wall.gym.id', read_only=True)
@@ -150,7 +162,6 @@ class VideoSerializer(serializers.ModelSerializer):
         fields = [
             "id", "video_url", "uploaded_at",
             "climb", "user",
-            # profile page fields
             "climb_id", "climb_name",
             "wall_id", "wall_name",
             "gym_id", "gym_name",
@@ -175,10 +186,15 @@ class CompRoundSerializer(serializers.ModelSerializer):
 
 
 class CompetitionSerializer(serializers.ModelSerializer):
+    # status is a @property on the model so it needs SerializerMethodField —
+    # it's computed from real time, not a DB column.
     status = serializers.SerializerMethodField()
+    # Nested read-only — divisions and rounds are written via their own
+    # endpoints, but embedded here so one GET returns the full competition.
     divisions = DivisionSerializer(many=True, read_only=True)
     rounds = CompRoundSerializer(many=True, read_only=True)
     registration_count = serializers.SerializerMethodField()
+    # is_registered is per-request-user, so it needs access to request context.
     is_registered = serializers.SerializerMethodField()
     has_linked_finals = serializers.SerializerMethodField()
 
@@ -200,16 +216,23 @@ class CompetitionSerializer(serializers.ModelSerializer):
         return obj.registrations.count()
 
     def get_is_registered(self, obj):
+        # self.context['request'] is populated when the serializer is
+        # instantiated via a DRF view — always check it exists for safety.
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.registrations.filter(user=request.user).exists()
         return False
 
     def get_has_linked_finals(self, obj):
+        # linked_finals is the reverse of the OneToOneField on linked_qualifier.
+        # hasattr check is needed because accessing it on an unlinked qualifier
+        # raises RelatedObjectDoesNotExist rather than returning None.
         return hasattr(obj, 'linked_finals') and obj.linked_finals is not None
 
 
 class CompClimbSerializer(serializers.ModelSerializer):
+    # Denormalised climb fields so the competition climbs list doesn't need
+    # follow-up requests to display climb name, colour, grade, and location.
     climb_name = serializers.CharField(source='climb.name', read_only=True)
     climb_colour = serializers.CharField(source='climb.colour', read_only=True)
     climb_grade = serializers.IntegerField(source='climb.suggested_grade', read_only=True)

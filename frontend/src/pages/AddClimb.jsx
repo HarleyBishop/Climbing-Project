@@ -5,6 +5,8 @@ import Navbar from "../components/Navbar";
 
 const GRADES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
+// Colour options match the COLOUR_MAP in ClimbPage and Profile — the string
+// name is stored in the DB; the hex is only used for the UI colour swatches.
 const COLOURS = [
   { name: "Green", bg: "#4a8c5c" },
   { name: "Orange", bg: "#c4622d" },
@@ -20,7 +22,11 @@ function AddClimb() {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
+  // Default to Green so the colour swatch always shows a selection,
+  // reducing the chance of accidentally submitting with no colour.
   const [colour, setColour] = useState("Green");
+  // grade starts null rather than 0 so the "please select a grade" validation
+  // fires — V0 is a valid grade and would pass a falsy check.
   const [grade, setGrade] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [error, setError] = useState(null);
@@ -54,7 +60,6 @@ function AddClimb() {
 
   return (
     <div className="min-h-screen bg-orange-50 font-serif">
-      {/* navbar handles back arrow and avatar — old hardcoded navbar removed */}
       <Navbar showBack backLabel="Back to gym" backPath={`/gym/${gymId}`} />
 
       <div className="max-w-xl mx-auto px-6 py-8">
@@ -86,6 +91,9 @@ function AddClimb() {
             />
           </div>
 
+          {/* Colour swatches — clicking one sets the colour name string that
+              gets sent to the backend. The scale-110 on selected makes the
+              active swatch slightly larger as visual feedback. */}
           <div>
             <label className="text-xs italic text-amber-800 block mb-2">
               Hold colour — <span className="text-amber-600">{colour}</span>
@@ -104,6 +112,8 @@ function AddClimb() {
             </div>
           </div>
 
+          {/* Grade selector — pill buttons acting as a radio group.
+              grade === null means unselected; grade === 0 means V0. */}
           <div>
             <label className="text-xs italic text-amber-800 block mb-2">
               Setter grade {grade !== null && `— V${grade}`}
@@ -138,6 +148,8 @@ function AddClimb() {
               onChange={(e) => setImageUrl(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif"
             />
+            {/* Live image preview — onError hides the img if the URL is invalid
+                or the image fails to load, so it doesn't show a broken image icon. */}
             {imageUrl && (
               <img
                 src={imageUrl}

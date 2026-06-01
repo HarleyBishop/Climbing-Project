@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import Navbar from "../components/Navbar";
+import { getRank, calculatePoints, RankBadge } from "../utils/rankUtils";
 
 const COLOUR_MAP = {
   Green: "#4a8c5c",
@@ -55,6 +56,9 @@ function Profile() {
     };
     fetchProfile();
   }, [profileId]);
+
+  const totalPoints = calculatePoints(sends);
+  const userRank = getRank(totalPoints);
 
   const avgGrade = sends.length
     ? Math.round(
@@ -110,6 +114,12 @@ function Profile() {
             <h1 className="text-2xl font-bold italic text-amber-900">
               @{profile.username}
             </h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <RankBadge rank={userRank} iconSize={16} />
+              <span className="text-xs italic text-amber-500">
+                {totalPoints} pts
+              </span>
+            </div>
             <p className="text-xs italic text-amber-600 mt-1">
               Member since{" "}
               {new Date(profile.date_joined).toLocaleDateString("en-AU", {

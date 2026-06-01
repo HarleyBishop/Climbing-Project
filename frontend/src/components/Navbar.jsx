@@ -3,8 +3,12 @@ import { getDecodedToken } from "../auth"
 import api from "../api"
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "../constants"
 
+// Shared top bar used across all protected pages.
+// showBack / backLabel / backPath control whether to show a back arrow (deep
+// pages like ClimbPage) or the "Beta Board" logo (top-level pages like Home).
 function Navbar({ showBack, backLabel, backPath }) {
     const navigate = useNavigate()
+    // Reading claims from the JWT avoids a round-trip to /me on every page render.
     const decoded = getDecodedToken()
     const username = decoded?.username ?? ""
     const isSetterUser = decoded?.is_setter ?? false
@@ -13,9 +17,14 @@ function Navbar({ showBack, backLabel, backPath }) {
     const handleLogout = async () => {
         const refresh = localStorage.getItem(REFRESH_TOKEN)
         try {
+            // Blacklisting the refresh token server-side prevents it from being
+            // used to obtain new access tokens even if someone intercepts it.
+            // If this fails (token already expired, network error etc.) we still
+            // clear localStorage and navigate away — a failed blacklist shouldn't
+            // block the user from logging out.
             await api.post("/api/token/blacklist/", { refresh })
         } catch {
-            // blacklist failed (token already expired etc.) — still log out locally
+            // intentionally swallowed
         }
         localStorage.removeItem(ACCESS_TOKEN)
         localStorage.removeItem(REFRESH_TOKEN)
@@ -25,6 +34,9 @@ function Navbar({ showBack, backLabel, backPath }) {
     return (
         <div className="flex items-center justify-between px-8 py-4 border-b border-amber-200 bg-orange-50">
             {showBack ? (
+                // backPath navigates to a specific page (e.g. back to gym).
+                // Falling back to navigate(-1) mimics the browser back button
+                // for cases where no explicit path is needed.
                 <div
                     onClick={() => backPath ? navigate(backPath) : navigate(-1)}
                     className="text-amber-700 italic text-sm cursor-pointer"
@@ -36,6 +48,7 @@ function Navbar({ showBack, backLabel, backPath }) {
             )}
 
             <div className="flex items-center gap-3">
+                {/* Setter badge only visible when the JWT contains is_setter=true */}
                 {isSetterUser && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900 text-amber-50 italic font-bold">
                         Setter

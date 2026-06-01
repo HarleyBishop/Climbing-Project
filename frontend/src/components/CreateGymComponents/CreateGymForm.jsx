@@ -8,6 +8,8 @@ import Navbar from "../../components/Navbar";
 function CreateGymForm() {
   const [gymName, setGymName] = useState("");
   const [location, setLocation] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [walls, setWalls] = useState([]);
   const [error, setError] = useState(null);
@@ -40,6 +42,8 @@ function CreateGymForm() {
         name: gymName,
         location,
         is_active: isActive,
+        lat: lat !== "" ? parseFloat(lat) : null,
+        lng: lng !== "" ? parseFloat(lng) : null,
       });
       const gymId = res.data.id;
 
@@ -108,6 +112,42 @@ function CreateGymForm() {
             onChange={(e) => setLocation(e.target.value)}
             className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif"
           />
+        </div>
+
+        <div className="mb-4">
+          <label className="text-xs italic text-amber-800 block mb-1">
+            Map coordinates <span className="text-amber-500">(optional)</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              step="any"
+              placeholder="Latitude e.g. -27.4705"
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif text-sm"
+            />
+            <input
+              type="number"
+              step="any"
+              placeholder="Longitude e.g. 153.0260"
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif text-sm"
+            />
+          </div>
+          <p className="text-xs italic text-amber-500 mt-1">
+            Right-click your gym on{' '}
+            <a
+              href="https://maps.google.com"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-amber-700"
+            >
+              Google Maps
+            </a>
+            {' '}and copy the coordinates to show this gym on the map.
+          </p>
         </div>
 
         <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200 mb-8">

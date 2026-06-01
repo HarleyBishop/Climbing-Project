@@ -21,17 +21,18 @@ from .models import (
     Competition, Division, CompRound, CompClimb, CompRegistration, CompSend, FinalsResult,
 )
 
-# NOTES FOR SELF:
-# QuerySet: defines which objects the request operates on
-# Serializer: validates incoming data and converts to correct format
-
 User = get_user_model()
 
 
 # ─── Permissions ─────────────────────────────────────────────────────────────
 
 class IsSetterOrReadOnly(BasePermission):
-    """Read access for everyone; write access only for verified setters."""
+    """
+    Safe HTTP methods (GET, HEAD, OPTIONS) are open to any authenticated user.
+    Mutating methods (POST, PUT, PATCH, DELETE) require is_verified_setter=True.
+    This is applied to Gym, Wall, Climb, and Competition list/create views so
+    regular climbers can browse but only setters can manage the gym's content.
+    """
     def has_permission(self, request, view):
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
             return True
@@ -43,14 +44,19 @@ class IsSetterOrReadOnly(BasePermission):
 
 
 # ─── Shared gym queryset helper ───────────────────────────────────────────────
-# Annotates wall_count and climb_count directly on the queryset so the
-# serializer never fires extra queries per gym (fixes N+1).
 
 def gym_queryset_with_counts():
+    """
+    Returns a Gym queryset with wall_count and climb_count annotated directly
+    onto each row. Annotating at the queryset level means the DB computes the
+    counts in one query rather than one extra query per gym (N+1 problem).
+    GymSerializer reads these annotations via SerializerMethodField.
+    """
     return Gym.objects.annotate(
         wall_count=Count('walls', distinct=True),
         climb_count=Count(
             'walls__climbs',
+            # Only count climbs that haven't been archived.
             filter=Q(walls__climbs__is_archived=False),
             distinct=True
         )
@@ -61,17 +67,20 @@ def gym_queryset_with_counts():
 
 def _get_or_create_oauth_user(sub_field, sub_value, email):
     """
-    Find an existing user by their OAuth sub ID, or by email, or create one.
-    Setters are blocked from using OAuth — they must log in with username/password.
-    Returns (user, error_string).
+    Three-step lookup for OAuth sign-in:
+    1. Find existing account by OAuth sub ID (fast path for returning users).
+    2. If not found, try email — links the OAuth sub to an existing account
+       created with username/password. Setters are blocked at this step.
+    3. If still not found, create a new climber-role account with a derived
+       username. set_unusable_password() means the account can't be used with
+       the regular login form, only via OAuth.
+    Returns (user, error_string) — error is None on success.
     """
-    # 1. Find by OAuth sub
     if sub_value:
         user = User.objects.filter(**{sub_field: sub_value}).first()
         if user:
             return user, None
 
-    # 2. Find by email (link OAuth sub to existing account)
     if email:
         user = User.objects.filter(email=email).first()
         if user:
@@ -81,7 +90,8 @@ def _get_or_create_oauth_user(sub_field, sub_value, email):
             user.save()
             return user, None
 
-    # 3. Create new climber account — OAuth accounts are always climbers
+    # Strip non-alphanumeric chars from the email local part to build a username,
+    # then increment a counter suffix until it's unique.
     base = re.sub(r'[^a-zA-Z0-9]', '', (email or '').split('@')[0]) or 'climber'
     username, counter = base, 1
     while User.objects.filter(username=username).exists():
@@ -100,7 +110,11 @@ def _get_or_create_oauth_user(sub_field, sub_value, email):
 
 
 def _oauth_response(user):
-    """Issue our JWT pair for a successfully authenticated OAuth user."""
+    """
+    Issues a JWT pair using our custom serializer (which embeds username and
+    is_setter in the payload) so the frontend gets the same token structure as
+    the normal login endpoint.
+    """
     refresh = CustomTokenObtainPairSerializer.get_token(user)
     return Response({
         'access': str(refresh.access_token),
@@ -109,6 +123,7 @@ def _oauth_response(user):
 
 
 class GoogleLoginView(APIView):
+    # AllowAny because this IS the authentication step — no token yet.
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -116,6 +131,9 @@ class GoogleLoginView(APIView):
         if not access_token:
             return Response({'detail': 'access_token is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Exchange the Google access token for the user's profile info.
+        # We use the userinfo endpoint rather than verifying an ID token locally
+        # because it avoids needing the Google public keys.
         try:
             resp = http_requests.get(
                 'https://www.googleapis.com/oauth2/v3/userinfo',
@@ -127,6 +145,7 @@ class GoogleLoginView(APIView):
         except Exception as exc:
             return Response({'detail': f'Failed to verify Google token: {exc}'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 'sub' is Google's stable unique user identifier.
         sub = info.get('sub')
         if not sub:
             return Response({'detail': 'Invalid Google token.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -146,11 +165,14 @@ class GoogleLoginView(APIView):
 class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    # AllowAny — registration must work before a token exists.
     permission_classes = [AllowAny]
 
 
 class UserDetailView(generics.RetrieveAPIView):
-    # Returns a single user by id for the profile page
+    # Used by the profile page to get basic user info (username, date_joined).
+    # lookup_url_kwarg maps the URL param 'user_id' to the model field 'id'
+    # since the URL uses user_id but the default lookup_field is 'pk'.
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     queryset = User.objects.all()
@@ -168,7 +190,8 @@ class GymListCreateView(generics.ListCreateAPIView):
         return gym_queryset_with_counts()
 
     def perform_create(self, serializer):
-        # added_by is read only in serializer so injected here from the logged in user
+        # added_by is read_only on the serializer so it can't be spoofed by
+        # the client — we inject it from the authenticated request here.
         serializer.save(added_by=self.request.user)
 
 
@@ -177,7 +200,8 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # any user can read a gym, only the creator can edit or delete
+        # Any authenticated user can view a gym. Only the creator can edit or
+        # delete — filtering by added_by on mutating methods is the ownership check.
         qs = gym_queryset_with_counts()
         if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
             return qs
@@ -185,6 +209,15 @@ class GymDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class MyGymsView(generics.ListAPIView):
+    """
+    Returns gyms where the logged-in user has logged at least one send,
+    ordered by most recent send. Used on the home page to surface gyms
+    the user actually climbs at rather than all gyms.
+    The chain of FK traversals (walls__climbs__sends__user) means Django
+    generates a JOIN rather than Python-level filtering, which keeps it
+    a single DB query. distinct() prevents duplicates when a user has
+    multiple sends at the same gym.
+    """
     serializer_class = GymSerializer
     permission_classes = [IsAuthenticated]
 
@@ -207,13 +240,21 @@ class WallListCreateView(generics.ListCreateAPIView):
         return Wall.objects.filter(gym_id=gym_id)
 
     def perform_create(self, serializer):
+        # gym is read_only on WallSerializer, so we resolve it from the URL
+        # and inject it. get_object_or_404 returns a clean 404 if the gym
+        # doesn't exist rather than a confusing FK integrity error.
         gym_id = self.kwargs.get("gym_id")
         gym = get_object_or_404(Gym, id=gym_id)
         serializer.save(gym=gym)
 
 
 class ArchiveWallClimbsView(APIView):
-    """Archives every active climb on a wall in one action. Setters only."""
+    """
+    Bulk-archives all active climbs on a wall in one API call. This is what
+    a setter does when resetting a wall with new routes. Using .update() issues
+    a single UPDATE statement rather than loading and saving each climb object,
+    which matters when walls have many climbs.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, gym_id, wall_id):
@@ -235,7 +276,8 @@ class ClimbListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         wall_id = self.kwargs.get("wall_id")
-        # archived climbs are never returned to the frontend
+        # is_archived=False means the gym page only shows the current set.
+        # Archived climbs are accessible via ClimbArchivedListView.
         return Climb.objects.filter(wall_id=wall_id, is_archived=False)
 
     def perform_create(self, serializer):
@@ -245,6 +287,8 @@ class ClimbListCreateView(generics.ListCreateAPIView):
 
 
 class ClimbArchivedListView(generics.ListAPIView):
+    # Separate endpoint for the archive view — keeps the main climb list clean
+    # and makes it explicit that accessing archived climbs is intentional.
     serializer_class = ClimbSerializer
     permission_classes = [IsAuthenticated]
 
@@ -258,7 +302,9 @@ class ClimbDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # any user can read a climb, only the setter can edit or delete
+        # Read is open to all authenticated users. Writes are restricted to the
+        # setter who created the climb — this prevents one setter from editing
+        # another's routes.
         if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
             return Climb.objects.all()
         return Climb.objects.filter(added_by=self.request.user)
@@ -278,14 +324,17 @@ class GradeVoteListCreateView(generics.ListCreateAPIView):
         climb_id = self.kwargs.get("climb_id")
         climb = get_object_or_404(Climb, id=climb_id)
 
-        # update_or_create prevents duplicate votes from unique_together constraint
+        # update_or_create handles the unique_together constraint gracefully:
+        # if the user has already voted it updates their grade, otherwise creates.
+        # This means POST is idempotent — re-voting just changes the grade.
         GradeVote.objects.update_or_create(
             climb=climb,
             user=self.request.user,
             defaults={'grade': serializer.validated_data['grade']}
         )
 
-        # recalculate and cache community grade on the climb after every vote
+        # Recalculate and cache the community grade on the climb itself after
+        # every vote. Caching it avoids re-aggregating on every climb page load.
         avg = GradeVote.objects.filter(climb=climb).aggregate(Avg('grade'))['grade__avg']
         climb.community_grade = round(avg, 1) if avg else None
         climb.save()
@@ -297,7 +346,7 @@ class GradeVoteDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         climb_id = self.kwargs.get("climb_id")
-        # users can only edit or delete their own votes
+        # Users can only access their own votes — no shared vote editing.
         return GradeVote.objects.filter(user=self.request.user, climb_id=climb_id)
 
 
@@ -314,8 +363,8 @@ class SendListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         climb_id = self.kwargs.get("climb_id")
         climb = get_object_or_404(Climb, id=climb_id)
-
-        # update_or_create prevents duplicate sends from unique_together constraint
+        # Same update_or_create pattern as GradeVote — logging a send twice
+        # just updates the attempt count rather than creating a duplicate.
         Send.objects.update_or_create(
             climb=climb,
             user=self.request.user,
@@ -333,7 +382,12 @@ class SendDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class UserSendsView(generics.ListAPIView):
-    # Returns all sends for a specific user — used on the profile page
+    """
+    Returns all sends for a specific user — used by the profile page.
+    select_related pre-fetches the climb, wall, and gym in a single JOIN query
+    so the serializer can traverse those relationships without triggering
+    extra queries for each send.
+    """
     serializer_class = SendSerializer
     permission_classes = [IsAuthenticated]
 
@@ -370,7 +424,6 @@ class ReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class UserReviewsView(generics.ListAPIView):
-    # Returns all reviews for a specific user — used on the profile page
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
 
@@ -407,7 +460,6 @@ class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class UserVideosView(generics.ListAPIView):
-    # Returns all videos for a specific user — used on the profile page
     serializer_class = VideoSerializer
     permission_classes = [IsAuthenticated]
 
@@ -418,10 +470,14 @@ class UserVideosView(generics.ListAPIView):
         )
 
 
-# ─── Leaderboard ─────────────────────────────────────────────────────────────
+# ─── Gym Climbs (for comp building) ──────────────────────────────────────────
 
 class GymClimbsView(generics.ListAPIView):
-    """All active climbs across every wall for a gym — used when building comp climb lists."""
+    """
+    Returns all active climbs across every wall for a gym. Used by the
+    competition page when a setter is picking which climbs to add to an event.
+    Ordered by wall then climb name for predictable list display.
+    """
     serializer_class = ClimbSerializer
     permission_classes = [IsAuthenticated]
 
@@ -439,6 +495,8 @@ class CompetitionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsSetterOrReadOnly]
 
     def get_queryset(self):
+        # prefetch_related fetches divisions and rounds with separate optimised
+        # queries (not JOINs) to avoid row multiplication when both are included.
         return Competition.objects.filter(
             gym_id=self.kwargs['gym_id']
         ).prefetch_related('divisions', 'rounds').order_by('-start_date')
@@ -533,6 +591,9 @@ class CompRegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # get_or_create so re-registering returns 200 rather than a duplicate
+        # key error. The frontend uses the status code to distinguish new vs
+        # existing registrations.
         obj, created = CompRegistration.objects.get_or_create(
             competition=comp,
             user=request.user,
@@ -545,7 +606,8 @@ class CompRegisterView(generics.CreateAPIView):
 
 
 class CompSendListView(generics.ListAPIView):
-    """Returns the current user's sends in this competition."""
+    """Returns only the current user's sends for this competition, not all
+    sends, so a climber can't see other competitors' progress mid-event."""
     serializer_class = CompSendSerializer
     permission_classes = [IsAuthenticated]
 
@@ -563,6 +625,8 @@ class CompSendCreateView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         comp = get_object_or_404(Competition, id=self.kwargs['comp_id'])
 
+        # Guard rails: the competition must be open, the user must be registered,
+        # and the climb must belong to this specific competition.
         if comp.status != 'open':
             return Response({'detail': 'Competition is not currently open.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -587,7 +651,16 @@ class CompSendCreateView(generics.CreateAPIView):
         )
 
 
+# ─── Qualifier Leaderboard ───────────────────────────────────────────────────
+
 class QualifierLeaderboardView(APIView):
+    """
+    Aggregates CompSend entries into a per-user points tally. Secondary sort
+    on total_attempts means ties are broken by who used fewer attempts — the
+    standard tiebreaker for points-based comps.
+    advances flag is True for the top top_x_advance users, used by the frontend
+    to show "advances to finals" badges.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, comp_id):
@@ -629,12 +702,16 @@ class FinalsResultListCreateView(generics.ListCreateAPIView):
         ).select_related('user', 'comp_climb__climb')
 
     def create(self, request, *args, **kwargs):
+        # Finals results are judge-entered, not self-reported — setter check here
+        # rather than on the permission class so the list (GET) is open to all.
         if not request.user.is_verified_setter:
             return Response({'detail': 'Only judges/setters can record finals results.'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # update_or_create so a judge can correct a result without it becoming
+        # a duplicate — the judging panel calls POST on every save.
         obj, created = FinalsResult.objects.update_or_create(
             comp_climb=serializer.validated_data['comp_climb'],
             user=serializer.validated_data['user'],
@@ -653,6 +730,15 @@ class FinalsResultListCreateView(generics.ListCreateAPIView):
 
 
 class FinalsLeaderboardView(APIView):
+    """
+    Implements the IFSC boulder finals ranking algorithm:
+      1. Most tops (completed problems) wins.
+      2. Tie on tops → fewest top attempts.
+      3. Tie again → most zones (reaching the intermediate hold).
+      4. Tie again → fewest zone attempts.
+    The sort key tuple (-tops, top_attempts, -zones, zone_attempts) encodes
+    this directly — negative values invert the sort direction.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, comp_id):
@@ -680,7 +766,6 @@ class FinalsLeaderboardView(APIView):
                 user_data[uid]['zones'] += 1
                 user_data[uid]['zone_attempts'] += r.zone_attempts or 1
 
-        # IFSC ranking: most tops → fewest top attempts → most zones → fewest zone attempts
         ranked = sorted(user_data.values(), key=lambda x: (
             -x['tops'], x['top_attempts'], -x['zones'], x['zone_attempts']
         ))
@@ -690,7 +775,20 @@ class FinalsLeaderboardView(APIView):
         return Response(ranked)
 
 
+# ─── Gym Leaderboard ─────────────────────────────────────────────────────────
+
 class GymLeaderboardView(generics.ListAPIView):
+    """
+    Points-per-grade ranking for the persistent gym leaderboard (separate from
+    competition leaderboards). Points are intentionally tiered rather than
+    linear so V7+ climbs are significantly more rewarding — this stops a climber
+    who logs every V0 from outranking someone who climbs hard routes infrequently.
+
+    Only sends on currently active (non-archived) climbs count. When a wall is
+    reset, archived climbs drop out of the calculation, which can lower everyone's
+    points — this is intentional and drives the "rank resets with the gym" feel.
+    The frontend mirrors this same grade_to_points mapping in rankUtils.jsx.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, gym_id):
@@ -703,11 +801,9 @@ class GymLeaderboardView(generics.ListAPIView):
             elif grade <= 10: return 100
             else: return 150
 
-        # only count sends on active non-archived climbs in this gym
         active_climbs = Climb.objects.filter(wall__gym_id=gym_id, is_archived=False)
         sends = Send.objects.filter(climb__in=active_climbs).select_related('user', 'climb')
 
-        # calculate points per user
         user_points = {}
         for send in sends:
             uid = send.user.id
@@ -722,7 +818,6 @@ class GymLeaderboardView(generics.ListAPIView):
             user_points[uid]['points'] += pts
             user_points[uid]['send_count'] += 1
 
-        # sort highest points first and add rank number
         ranked = sorted(user_points.values(), key=lambda x: x['points'], reverse=True)
         for i, entry in enumerate(ranked):
             entry['rank'] = i + 1

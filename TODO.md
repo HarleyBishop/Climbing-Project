@@ -2,12 +2,6 @@ DEPLOY DEPLOY DELPY
 SWICT DEPLOY TO BE SPEERATE GIT FOR FRONTEND + BAKCEND
 
 
-🟡 Should
-Pagination (gyms + climbs)
-Archived climbs page
-Search (gyms + users)
-Home gym feature
-Decide video storage (S3 vs URLs)
 
 
 🟢 Nice

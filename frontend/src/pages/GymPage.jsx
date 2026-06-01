@@ -14,12 +14,18 @@ function GymPage() {
   const [selectedWall, setSelectedWall] = useState(null);
   const [climbs, setClimbs] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Separate loading state for climbs so switching walls shows a sub-spinner
+  // without re-showing the full-page loading screen.
   const [climbsLoading, setClimbsLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Two-step confirmation state for the archive action — shows a "are you sure"
+  // prompt before making the destructive API call.
   const [archiveConfirm, setArchiveConfirm] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const canEdit = isSetter();
 
+  // Load gym info and its walls on mount. Walls and gym are fetched in parallel
+  // since neither depends on the other's result.
   useEffect(() => {
     const fetchGymData = async () => {
       setLoading(true);
@@ -31,6 +37,7 @@ function GymPage() {
         ]);
         setGym(gymRes.data);
         setWalls(wallRes.data);
+        // Auto-select the first wall so the page isn't blank on load.
         setSelectedWall(wallRes.data[0]);
       } catch (err) {
         setError("Failed to load gym. Please try again.");
@@ -41,6 +48,8 @@ function GymPage() {
     fetchGymData();
   }, [id]);
 
+  // Refetch climbs whenever the selected wall changes. This is intentionally a
+  // separate effect from the gym fetch so wall switching doesn't re-fetch gym data.
   useEffect(() => {
     if (!selectedWall) return;
     const fetchClimbs = async () => {
@@ -63,6 +72,8 @@ function GymPage() {
     setArchiving(true);
     try {
       await api.post(`/api/gyms/${id}/walls/${selectedWall.id}/archive-climbs/`);
+      // Clear the local climbs list immediately so the wall appears empty
+      // without waiting for a refetch — optimistic UI update.
       setClimbs([]);
       setArchiveConfirm(false);
     } catch {
@@ -99,7 +110,6 @@ function GymPage() {
       <Navbar showBack backLabel="Back to gyms" backPath="/" />
 
       <div className="max-w-2xl mx-auto px-6 py-8">
-        {/* gym header */}
         <h1 className="text-3xl font-bold italic text-amber-900 leading-tight mb-1">
           {gym.name}
         </h1>
@@ -131,7 +141,8 @@ function GymPage() {
 
         <div className="h-px bg-amber-200 my-6" />
 
-        {/* wall tabs */}
+        {/* Wall selector — acts as a tab bar. Clicking a wall tab triggers the
+            climbs useEffect via setSelectedWall. */}
         <p className="text-xs font-bold tracking-widest text-amber-700 mb-3">
           SELECT WALL
         </p>
@@ -145,6 +156,8 @@ function GymPage() {
               <button
                 key={wall.id}
                 type="button"
+                // Reset archiveConfirm when switching walls so the confirmation
+                // prompt doesn't carry over to the newly selected wall.
                 onClick={() => { setSelectedWall(wall); setArchiveConfirm(false); }}
                 className={`px-4 py-2 rounded-full text-sm italic border transition-colors
                   ${
@@ -159,7 +172,8 @@ function GymPage() {
           </div>
         )}
 
-        {/* setter archive action */}
+        {/* Archive action — setter only. Two-step: clicking the link shows a
+            confirmation row; only then can the API call be triggered. */}
         {canEdit && selectedWall && (
           <div className="mb-6">
             {archiveConfirm ? (
@@ -184,6 +198,7 @@ function GymPage() {
                 </button>
               </div>
             ) : (
+              // Disabled when there are no climbs — nothing to archive.
               <button
                 type="button"
                 onClick={() => setArchiveConfirm(true)}
@@ -196,7 +211,6 @@ function GymPage() {
           </div>
         )}
 
-        {/* climbs header row */}
         {selectedWall && (
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -228,7 +242,6 @@ function GymPage() {
           </div>
         )}
 
-        {/* climb cards */}
         {climbsLoading ? (
           <p className="text-sm italic text-amber-500">Loading climbs...</p>
         ) : (

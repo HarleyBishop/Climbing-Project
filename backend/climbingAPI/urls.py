@@ -8,15 +8,22 @@ urlpatterns = [
 
     # ─── Gym ─────────────────────────────────────────────────────────────────
     path('gyms/', views.GymListCreateView.as_view(), name='gym-list'),
-    path('gyms/my-gyms/', views.MyGymsView.as_view(), name='my-gyms'), # User Specific GYM collection. Needs to be above gyms/int:id because it will think its a id otherwise
+    # my-gyms MUST come before gyms/<int:pk>/ — Django's URL resolver matches
+    # patterns in order, so if the pk pattern came first it would try to cast
+    # "my-gyms" as an integer and raise a 404 before reaching this view.
+    path('gyms/my-gyms/', views.MyGymsView.as_view(), name='my-gyms'),
     path('gyms/<int:pk>/', views.GymDetailView.as_view(), name='gym-detail'),
 
     # ─── Wall ────────────────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/walls/', views.WallListCreateView.as_view(), name='wall-list'),
+    # Bulk archive action — POST to this to flip is_archived=True on all active
+    # climbs of a wall at once, rather than patching each climb individually.
     path('gyms/<int:gym_id>/walls/<int:wall_id>/archive-climbs/', views.ArchiveWallClimbsView.as_view(), name='archive-wall-climbs'),
 
     # ─── Climb ───────────────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/', views.ClimbListCreateView.as_view(), name='climb-list'),
+    # archived/ is a sub-path of climbs/ to make the intent clear at the URL
+    # level — you're asking for the archived subset of this wall's climbs.
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/archived/', views.ClimbArchivedListView.as_view(), name='climb-archived'),
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/<int:pk>/', views.ClimbDetailView.as_view(), name='climb-detail'),
 
@@ -36,19 +43,23 @@ urlpatterns = [
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/<int:climb_id>/videos/', views.VideoListCreateView.as_view(), name='video-list'),
     path('gyms/<int:gym_id>/walls/<int:wall_id>/climbs/<int:climb_id>/videos/<int:pk>/', views.VideoDetailView.as_view(), name='video-detail'),
 
-    # ─── Profile Page Views ────────────────────────────────────────────────────
+    # ─── Profile page endpoints ────────────────────────────────────────────────
+    # Separate endpoints per data type so the profile page can load them in
+    # parallel (Promise.all) rather than waiting for one big response.
     path('users/<int:user_id>/', views.UserDetailView.as_view(), name='user-detail'),
     path('users/<int:user_id>/sends/', views.UserSendsView.as_view(), name='user-sends'),
     path('users/<int:user_id>/reviews/', views.UserReviewsView.as_view(), name='user-reviews'),
     path('users/<int:user_id>/videos/', views.UserVideosView.as_view(), name='user-videos'),
 
-    # ─── Leaderboard Stats View ────────────────────────────────────────────────────
+    # ─── Leaderboard ──────────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/leaderboard/', views.GymLeaderboardView.as_view(), name='leaderboard'),
 
-    # ─── All Gym Climbs (for comp building) ───────────────────────────────────────
+    # ─── All active gym climbs (for comp building) ─────────────────────────────
+    # Used when a setter is adding climbs to a competition — returns every
+    # active climb in the gym across all walls so they can search and pick.
     path('gyms/<int:gym_id>/all-climbs/', views.GymClimbsView.as_view(), name='gym-all-climbs'),
 
-    # ─── Competition ──────────────────────────────────────────────────────────────
+    # ─── Competition ──────────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/competitions/', views.CompetitionListCreateView.as_view(), name='competition-list'),
     path('competitions/<int:comp_id>/', views.CompetitionDetailView.as_view(), name='competition-detail'),
     path('competitions/<int:comp_id>/divisions/', views.DivisionListCreateView.as_view(), name='division-list'),

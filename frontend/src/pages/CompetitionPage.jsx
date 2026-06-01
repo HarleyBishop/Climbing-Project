@@ -16,6 +16,7 @@ const COLOUR_MAP = {
   Pink: "#a0416e",  Yellow: "#c9a020", Black: "#555050", White: "#f5f5f0",
 };
 
+// Date formatting helpers used throughout this file.
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
 }
@@ -24,6 +25,8 @@ function fmtDateTime(iso) {
 }
 
 // ─── Tab bar ─────────────────────────────────────────────────────────────────
+// Generic tab bar component — the active tab gets a bottom border highlight
+// using -mb-px to overlap the container's border-b, making it look connected.
 function TabBar({ tabs, active, onChange }) {
   return (
     <div className="flex gap-1 border-b border-amber-200 mb-6">
@@ -41,10 +44,12 @@ function TabBar({ tabs, active, onChange }) {
 }
 
 // ─── Info tab ────────────────────────────────────────────────────────────────
+// Shows competition metadata, registration button, and status. onRegister is
+// passed down from the parent so the parent can refetch comp data after
+// registration (which updates the is_registered flag).
 function InfoTab({ comp, isRegistered, onRegister, registering }) {
   return (
     <div>
-      {/* dates */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         {[
           { label: "Opens", value: fmtDateTime(comp.start_date) },
@@ -75,6 +80,8 @@ function InfoTab({ comp, isRegistered, onRegister, registering }) {
       {comp.rules && (
         <div className="mb-4">
           <p className="text-xs font-bold tracking-widest text-amber-700 mb-2">RULES</p>
+          {/* whitespace-pre-line preserves line breaks the setter may have
+              typed in the rules textarea. */}
           <p className="text-sm italic text-amber-800 whitespace-pre-line leading-relaxed">{comp.rules}</p>
         </div>
       )}
@@ -128,6 +135,11 @@ function InfoTab({ comp, isRegistered, onRegister, registering }) {
 }
 
 // ─── Climbs tab ──────────────────────────────────────────────────────────────
+// Handles two user flows:
+// 1. Setter: can add/remove climbs from the competition.
+// 2. Registered climber: can log sends against comp climbs while it's open.
+// onSendLogged and onClimbRemoved are callbacks that trigger a refetch in the
+// parent so the climbs list and send state stay in sync.
 function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, onClimbRemoved }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [gymClimbs, setGymClimbs] = useState([]);
@@ -137,18 +149,23 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState(null);
 
-  const [logModal, setLogModal] = useState(null); // comp climb being logged
+  const [logModal, setLogModal] = useState(null);
   const [logAttempts, setLogAttempts] = useState("");
   const [logging, setLogging] = useState(false);
   const [logError, setLogError] = useState(null);
 
+  // Set for fast O(1) lookups when filtering out already-added climbs.
   const alreadyInComp = new Set(compClimbs.map(cc => cc.climb));
+  // Map comp_climb ID → send object so we can check "did I send this?" per row
+  // without iterating the whole sends array on every render.
   const mySendMap = Object.fromEntries(mySends.map(s => [s.comp_climb, s]));
   const canLog = comp.status === "open" && comp.is_registered;
 
   const openAddModal = async () => {
     setAddError(null);
     setShowAddModal(true);
+    // Only fetch the gym's climbs the first time the modal opens — cached in
+    // state so subsequent openings don't hit the API again.
     if (gymClimbs.length === 0) {
       try {
         const res = await api.get(`/api/gyms/${gymId}/all-climbs/`);
@@ -168,7 +185,9 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
         climb: pendingAdd.id,
         points_value: pendingPoints,
       });
-      onClimbRemoved(); // triggers refetch
+      // Calling onClimbRemoved (which was named for removal but acts as a
+      // general "refetch comp climbs" signal) updates the parent's list.
+      onClimbRemoved();
       setShowAddModal(false);
       setPendingAdd(null);
       setPendingPoints(100);
@@ -206,6 +225,7 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
     }
   };
 
+  // Filter out climbs already in the comp and apply the search query.
   const filtered = gymClimbs.filter(c =>
     !alreadyInComp.has(c.id) &&
     (c.name.toLowerCase().includes(addSearch.toLowerCase()) ||
@@ -295,7 +315,8 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
         </div>
       )}
 
-      {/* Add climb modal */}
+      {/* Add climb modal — two-step: pick a climb from search list, then
+          set its points value before confirming. pendingAdd drives which step. */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
           onClick={() => setShowAddModal(false)}>
@@ -305,6 +326,7 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
             {addError && <p className="text-red-600 italic text-xs mb-3">{addError}</p>}
 
             {pendingAdd ? (
+              // Step 2: confirm the climb and set points value
               <div>
                 <p className="text-sm italic text-amber-800 mb-4">
                   Adding <strong>{pendingAdd.name}</strong> (V{pendingAdd.suggested_grade})
@@ -322,6 +344,7 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
                 </div>
               </div>
             ) : (
+              // Step 1: search and select a climb
               <>
                 <input type="text" placeholder="Search climbs…" value={addSearch}
                   onChange={e => setAddSearch(e.target.value)}
@@ -351,6 +374,9 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
 }
 
 // ─── Qualifier leaderboard ────────────────────────────────────────────────────
+// Live-updating leaderboard that polls every 30 seconds during an open comp.
+// useCallback memoises fetch so it can be used as a setInterval callback
+// without causing the interval to reset on every render.
 function QualifierLeaderboard({ compId, currentUserId }) {
   const navigate = useNavigate();
   const [rankings, setRankings] = useState([]);
@@ -367,6 +393,9 @@ function QualifierLeaderboard({ compId, currentUserId }) {
 
   useEffect(() => {
     fetch();
+    // Poll every 30 seconds so standings update without requiring a page refresh.
+    // The cleanup function clears the interval when the tab is changed or the
+    // component unmounts, preventing stale updates.
     const id = setInterval(fetch, 30000);
     return () => clearInterval(id);
   }, [fetch]);
@@ -414,12 +443,17 @@ function QualifierLeaderboard({ compId, currentUserId }) {
   );
 }
 
-// ─── Finals leaderboard + judging ─────────────────────────────────────────────
+// ─── Finals tab ───────────────────────────────────────────────────────────────
+// Combines the IFSC leaderboard display with the setter's judging panel.
+// isSetterUser controls whether the judging panel is shown — it's always
+// hidden from regular climbers.
 function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserId }) {
   const navigate = useNavigate();
   const [results, setResults] = useState([]);
   const [loadingResults, setLoadingResults] = useState(true);
+  // judgingClimb = the CompClimb currently being judged in the panel.
   const [judgingClimb, setJudgingClimb] = useState(null);
+  // judgeForm is keyed by user ID so each registrant has independent form state.
   const [judgeForm, setJudgeForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -444,6 +478,7 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
   useEffect(() => {
     fetchResults();
     fetchLeaderboard().then(setLeaderboard);
+    // Same 30-second poll as the qualifier leaderboard for live updates.
     const id = setInterval(() => {
       fetchResults();
       fetchLeaderboard().then(setLeaderboard);
@@ -452,6 +487,8 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
   }, [fetchResults, fetchLeaderboard]);
 
   const openJudging = (cc) => {
+    // Pre-populate the form with any existing results so the judge can see
+    // and edit what's already been recorded rather than starting from scratch.
     const existing = {};
     registrations.forEach(reg => {
       const result = results.find(r => r.comp_climb === cc.id && r.user === reg.user);
@@ -471,6 +508,8 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
         comp_climb: judgingClimb.id,
         user: userId,
         topped: f.topped,
+        // Only send attempt counts when the corresponding boolean is true —
+        // the backend uses update_or_create so this overwrites previous values.
         top_attempts: f.topped ? (parseInt(f.top_attempts) || null) : null,
         zoned: f.zoned,
         zone_attempts: f.zoned ? (parseInt(f.zone_attempts) || null) : null,
@@ -488,7 +527,8 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
 
   return (
     <div>
-      {/* IFSC Leaderboard */}
+      {/* IFSC leaderboard — tops/zones with attempt counts displayed in the
+          standard competition format: "2/4a" means 2 tops in 4 attempts. */}
       {leaderboard.length > 0 && (
         <div className="mb-8">
           <p className="text-xs font-bold tracking-widest text-amber-700 mb-3">RESULTS</p>
@@ -524,7 +564,8 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
         <p className="text-sm italic text-amber-500 py-8 text-center">No results recorded yet.</p>
       )}
 
-      {/* Judging panel — setter only */}
+      {/* Judging panel — only visible to setters. The judge selects a climb,
+          then enters topped/zoned and attempt counts per registered climber. */}
       {isSetterUser && (
         <div>
           <div className="h-px bg-amber-200 mb-6" />
@@ -545,6 +586,7 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
                     <p className="text-sm font-bold italic text-amber-900">{cc.climb_name}</p>
                     <p className="text-xs italic text-amber-500">{cc.wall_name} · V{cc.climb_grade}</p>
                   </div>
+                  {/* Progress counter — "X/Y judged" shows how complete the panel is. */}
                   <span className="text-xs italic text-amber-600">
                     {results.filter(r => r.comp_climb === cc.id).length}/{registrations.length} judged
                   </span>
@@ -602,6 +644,9 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
   );
 }
 
+// Custom toggle switch component for the judging panel's topped/zoned inputs.
+// translate-x-5 / translate-x-0 slides the knob left/right to match the
+// checked state without needing a third-party component library.
 function ResultToggle({ label, checked, onChange }) {
   return (
     <div className="flex items-center gap-2">
@@ -616,6 +661,10 @@ function ResultToggle({ label, checked, onChange }) {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
+// Orchestrates data fetching for all sub-components and passes down callbacks
+// so children can trigger refetches without prop-drilling state setters.
+// useCallback on fetch functions prevents child useEffects from re-running
+// when the parent re-renders for unrelated reasons.
 function CompetitionPage() {
   const { gymId, compId } = useParams();
   const decoded = getDecodedToken();
@@ -639,6 +688,8 @@ function CompetitionPage() {
   }, [compId]);
 
   const fetchClimbs = useCallback(async () => {
+    // Fetches comp climbs and the current user's sends together — they're
+    // always needed at the same time and kept in sync by using this as one callback.
     const [climbsRes, sendsRes] = await Promise.all([
       api.get(`/api/competitions/${compId}/climbs/`),
       api.get(`/api/competitions/${compId}/sends/`),
@@ -668,6 +719,8 @@ function CompetitionPage() {
     setRegistering(true);
     try {
       await api.post(`/api/competitions/${compId}/register/`, {});
+      // Refetch both comp (updates is_registered + registration_count) and
+      // registrations list so the judging panel shows the new registrant.
       await fetchComp();
       await fetchRegistrations();
     } catch (err) {
@@ -695,6 +748,8 @@ function CompetitionPage() {
   const tabs = [
     { key: "info", label: "Info" },
     { key: "climbs", label: `Climbs (${compClimbs.length})` },
+    // Label changes between qualifier and finals: qualifier shows rankings
+    // during the event; finals shows judged IFSC results.
     { key: "leaderboard", label: isQualifier ? "Leaderboard" : "Results" },
   ];
 
@@ -703,7 +758,6 @@ function CompetitionPage() {
       <Navbar showBack backLabel="Competitions" backPath={`/gym/${gymId}/competitions`} />
       <div className="max-w-2xl mx-auto px-6 py-8">
 
-        {/* Header */}
         <div className="mb-6">
           <div className="flex flex-wrap items-start gap-2 mb-2">
             <span className={`text-xs px-2 py-0.5 rounded-full italic font-bold

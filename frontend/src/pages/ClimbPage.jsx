@@ -4,6 +4,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import Navbar from "../components/Navbar";
 
+// Maps the colour string stored in the DB to a hex value for the hero banner.
+// Kept local to ClimbPage since it's the only page that uses the full-colour
+// hero treatment — other pages use the colour only as a small accent.
 const COLOUR_MAP = {
   Green: "#4a8c5c",
   Orange: "#c4622d",
@@ -23,19 +26,18 @@ function ClimbPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // modal visibility
+  // Modal visibility — modals are rendered inline (not portals) so they
+  // inherit the page's z-index stack. z-50 puts them above everything else.
   const [showSendModal, setShowSendModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
 
-  // action-level errors shown inside modals
+  // Action-level errors are shown inside their respective modals rather than
+  // globally, so the user can see what went wrong in context.
   const [sendError, setSendError] = useState(null);
   const [reviewError, setReviewError] = useState(null);
   const [voteError, setVoteError] = useState(null);
 
-  // send form state
   const [attempts, setAttempts] = useState("");
-
-  // review form state
   const [comment, setComment] = useState("");
   const [stars, setStars] = useState(0);
   const [reviewAttempts, setReviewAttempts] = useState("");
@@ -48,9 +50,13 @@ function ClimbPage() {
 
   const token = localStorage.getItem("access");
   const currentUserId = jwtDecode(token).user_id;
+  // Find this user's own vote and send so we can show "you've already voted/sent"
+  // state without a separate API call.
   const myVote = gradeVote.find((vote) => vote.user === currentUserId);
   const mySend = sends.find((send) => send.user === currentUserId);
 
+  // All climb data is fetched in parallel on mount. If any request fails the
+  // error state is set and the error screen is shown.
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -59,18 +65,10 @@ function ClimbPage() {
         const [climbRes, gradeVoteres, reviewres, videosres, sendsres] =
           await Promise.all([
             api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/`),
-            api.get(
-              `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`,
-            ),
-            api.get(
-              `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`,
-            ),
-            api.get(
-              `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`,
-            ),
-            api.get(
-              `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`,
-            ),
+            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`),
+            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`),
+            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`),
+            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`),
           ]);
         setClimb(climbRes.data);
         setGradeVote(gradeVoteres.data);
@@ -93,6 +91,8 @@ function ClimbPage() {
         `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`,
         { grade },
       );
+      // Refetch votes after posting so the community grade update from the
+      // backend is reflected immediately without a page refresh.
       const res = await api.get(
         `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`,
       );
@@ -111,10 +111,9 @@ function ClimbPage() {
     try {
       await api.post(
         `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`,
-        {
-          attempts: parseInt(attempts),
-        },
+        { attempts: parseInt(attempts) },
       );
+      // Refetch sends to update the send count stat and the "you sent this" strip.
       const res = await api.get(
         `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`,
       );
@@ -143,19 +142,15 @@ function ClimbPage() {
     try {
       await api.post(
         `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`,
-        {
-          comment,
-          stars,
-          attempts: parseInt(reviewAttempts),
-        },
+        { comment, stars, attempts: parseInt(reviewAttempts) },
       );
 
+      // Video upload is optional — only POST it if the user entered a URL.
+      // It's a separate request because the video endpoint is its own resource.
       if (videoUrl) {
         await api.post(
           `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`,
-          {
-            video_url: videoUrl,
-          },
+          { video_url: videoUrl },
         );
         const vidRes = await api.get(
           `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`,
@@ -209,7 +204,9 @@ function ClimbPage() {
         backPath={`/gym/${gymId}`}
       />
 
-      {/* colour hero */}
+      {/* Colour hero — uses the climb's hold colour as a full-width banner.
+          The tags at the bottom use bg-black/30 (30% opacity black) so they
+          remain readable regardless of the climb colour behind them. */}
       <div
         className="w-full h-44 flex items-end p-4 gap-2"
         style={{ background: colour }}
@@ -241,6 +238,7 @@ function ClimbPage() {
             { label: "Setter grade", value: `V${climb.suggested_grade}` },
             {
               label: "Community",
+              // community_grade is null until at least one vote exists.
               value: climb.community_grade ? `V${climb.community_grade}` : "—",
             },
             { label: "Sends", value: sends.length },
@@ -258,7 +256,9 @@ function ClimbPage() {
           ))}
         </div>
 
-        {/* send strip */}
+        {/* Send strip — shows different UI depending on whether the user has
+            already logged a send. mySend is derived from the sends array using
+            the current user's ID from the JWT. */}
         {mySend ? (
           <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-6">
             <p className="text-sm italic text-green-800">
@@ -294,6 +294,9 @@ function ClimbPage() {
         {voteError && (
           <p className="text-red-600 italic text-xs mb-2">{voteError}</p>
         )}
+        {/* Grade voting buttons — highlighted when it matches myVote.grade.
+            The backend uses update_or_create so clicking a grade always works
+            whether it's the user's first vote or a re-vote. */}
         <div className="flex gap-2 flex-wrap mb-8">
           {GRADES.map((grade) => (
             <button
@@ -387,14 +390,13 @@ function ClimbPage() {
         </button>
       </div>
 
-      {/* send modal */}
+      {/* Send modal — clicking the backdrop closes the modal and clears errors.
+          e.stopPropagation() on the inner div prevents the backdrop click
+          handler from firing when the user clicks inside the modal. */}
       {showSendModal && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => {
-            setShowSendModal(false);
-            setSendError(null);
-          }}
+          onClick={() => { setShowSendModal(false); setSendError(null); }}
         >
           <div
             className="bg-amber-50 rounded-xl border border-amber-200 p-6 w-80 font-serif"
@@ -427,10 +429,7 @@ function ClimbPage() {
                 Log send
               </button>
               <button
-                onClick={() => {
-                  setShowSendModal(false);
-                  setSendError(null);
-                }}
+                onClick={() => { setShowSendModal(false); setSendError(null); }}
                 className="flex-1 py-2 rounded-lg border border-amber-300 text-amber-700 italic text-sm"
               >
                 Cancel
@@ -440,14 +439,12 @@ function ClimbPage() {
         </div>
       )}
 
-      {/* review modal */}
+      {/* Review modal — video URL is optional, submitted alongside the review
+          as a separate API call if provided. */}
       {showReviewModal && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => {
-            setShowReviewModal(false);
-            setReviewError(null);
-          }}
+          onClick={() => { setShowReviewModal(false); setReviewError(null); }}
         >
           <div
             className="bg-amber-50 rounded-xl border border-amber-200 p-6 w-80 font-serif"
@@ -463,9 +460,7 @@ function ClimbPage() {
               <p className="text-red-600 italic text-xs mb-3">{reviewError}</p>
             )}
 
-            <label className="text-xs italic text-amber-800 block mb-1">
-              Comment
-            </label>
+            <label className="text-xs italic text-amber-800 block mb-1">Comment</label>
             <textarea
               placeholder="What did you think?"
               value={comment}
@@ -473,9 +468,7 @@ function ClimbPage() {
               className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-amber-900 font-serif mb-3 h-20 resize-none"
             />
 
-            <label className="text-xs italic text-amber-800 block mb-2">
-              Stars
-            </label>
+            <label className="text-xs italic text-amber-800 block mb-2">Stars</label>
             <div className="flex gap-2 mb-3">
               {[1, 2, 3, 4, 5].map((star) => (
                 <span
@@ -488,9 +481,7 @@ function ClimbPage() {
               ))}
             </div>
 
-            <label className="text-xs italic text-amber-800 block mb-1">
-              Attempts
-            </label>
+            <label className="text-xs italic text-amber-800 block mb-1">Attempts</label>
             <input
               type="number"
               placeholder="e.g. 3"
@@ -518,10 +509,7 @@ function ClimbPage() {
                 Submit
               </button>
               <button
-                onClick={() => {
-                  setShowReviewModal(false);
-                  setReviewError(null);
-                }}
+                onClick={() => { setShowReviewModal(false); setReviewError(null); }}
                 className="flex-1 py-2 rounded-lg border border-amber-300 text-amber-700 italic text-sm"
               >
                 Cancel

@@ -1,31 +1,24 @@
-"""
-URL configuration for backend project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-
 from django.contrib import admin
 from django.urls import path, include
 from climbingAPI.views import CreateUserView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView, TokenRefreshView, TokenBlacklistView)
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # JWT endpoints — provided by simplejwt, not written by hand.
+    # /api/token/        → POST username+password, returns access+refresh tokens.
+    # /api/token/refresh/ → POST refresh token, returns a new access token.
+    # /api/token/blacklist/ → POST refresh token to invalidate it on logout.
+    # TokenObtainPairView is the default; our custom serializer (configured in
+    # SIMPLE_JWT settings) wraps it to embed username and is_setter in the payload.
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path("api/token/refresh/", TokenRefreshView.as_view(), name='refresh'),
     path("api/token/blacklist/", TokenBlacklistView.as_view(), name='token_blacklist'),
+
+    # All application routes are delegated to climbingAPI/urls.py under /api/.
+    # Keeping the app's URLs in its own file means the app is self-contained
+    # and easier to move or reuse.
     path("api/", include("climbingAPI.urls")),
 ]

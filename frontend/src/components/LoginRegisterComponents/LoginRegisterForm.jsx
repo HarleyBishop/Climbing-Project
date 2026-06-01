@@ -4,9 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "../../constants";
 import { useGoogleLogin } from "@react-oauth/google";
 
+// Shared form component for both login and register flows.
+// The `method` prop switches behaviour: "login" stores tokens and navigates
+// to home; "register" creates the account then redirects to /login.
 function LoginRegisterForm({route, method}) {
     const [username, setUsername] = useState("")
     const [password, setPassword] = useState("")
+    // isSetterRole is only sent on register — the backend sets is_verified_setter
+    // from this flag. It can't be changed via the API after registration.
     const [isSetterRole, setIsSetterRole] = useState(false)
     const [loading, setLoading] = useState("")
     const navigate = useNavigate()
@@ -21,6 +26,8 @@ function LoginRegisterForm({route, method}) {
     };
 
     const handleOAuthError = (err) => {
+        // 403 from the backend means the email matched a setter account —
+        // setters are blocked from OAuth to prevent role confusion.
         if (err?.response?.status === 403) {
             alert("Setter accounts cannot use OAuth. Please log in with your username and password.");
         } else {
@@ -28,6 +35,10 @@ function LoginRegisterForm({route, method}) {
         }
     };
 
+    // useGoogleLogin (implicit flow) gives us an access_token which we forward
+    // to the backend's /api/auth/google/ endpoint. The backend then calls
+    // Google's userinfo endpoint to verify the token and get the user's profile,
+    // then issues our own JWT pair. This keeps Google credentials server-side.
     const googleLogin = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
             try {
@@ -49,6 +60,8 @@ function LoginRegisterForm({route, method}) {
 
         try {
             const payload = { username, password }
+            // is_verified_setter is only included on register — the backend
+            // ignores it on the login endpoint.
             if (isRegister) payload.is_verified_setter = isSetterRole
 
             const res = await api.post(route, payload)
@@ -58,6 +71,8 @@ function LoginRegisterForm({route, method}) {
                 navigate("/")
             }
             else{
+                // After registration redirect to login — the user needs to
+                // authenticate to get a token, registration doesn't auto-login.
                 navigate("/login")
             }
         }
@@ -78,7 +93,6 @@ function LoginRegisterForm({route, method}) {
         placeholder="username"
         />
 
-
         <input className="w-full h-10 pl-3 form-input2 outline-1 outline-amber-900 rounded-sm mb-10 focus:bg-amber-100"
         type="password"
         value={password}
@@ -86,6 +100,8 @@ function LoginRegisterForm({route, method}) {
         placeholder="password"
         />
 
+        {/* Role toggle only shown on register — two buttons act as a radio group.
+            The selected role is sent to the backend which sets is_verified_setter. */}
         {isRegister && (
             <div className="w-full mb-8">
                 <p className="text-xs italic text-amber-800 mb-2">I am registering as a…</p>
@@ -118,11 +134,20 @@ function LoginRegisterForm({route, method}) {
             {name}
         </button>
 
-        {name === "Login" && (
+        {/* Switch link — shown below the submit button so users can easily
+            navigate between login and register without going back. */}
+        {name === "Login" ? (
                 <p className="text-sm text-amber-800 italic text-center">
                     Don't have an account?{" "}
-                    <span onClick={() => navigate("/register")} className="text-amber-900 font-bold underline">
+                    <span onClick={() => navigate("/register")} className="text-amber-900 font-bold underline cursor-pointer">
                         Register
+                    </span>
+                </p>
+            ) : (
+                <p className="text-sm text-amber-800 italic text-center">
+                    Already have an account?{" "}
+                    <span onClick={() => navigate("/login")} className="text-amber-900 font-bold underline cursor-pointer">
+                        Login
                     </span>
                 </p>
             )}
@@ -147,9 +172,10 @@ function LoginRegisterForm({route, method}) {
                 </svg>
                 Sign in with Google
             </button>
-
         </div>
 
+        {/* OAuth accounts are always created as Climbers on the backend —
+            setters cannot bypass the manual registration flow via OAuth. */}
         {isRegister && (
             <p className="text-xs text-amber-600 italic text-center mt-4">
                 OAuth always creates a Climber account. Setters / Gym owners must register above.
