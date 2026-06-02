@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import api from "../api";
-import ClimbCard from "../components/ClimbDashboardComponents/ClimbCard";
-import Navbar from "../components/Navbar";
-import { isSetter } from "../auth";
-import { PageSkeleton } from "../components/Skeleton";
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import api from '../api';
+import ClimbCard from '../components/ClimbDashboardComponents/ClimbCard';
+import { PageShell } from '../components/ui/PageShell';
+import { PageSkeleton } from '../components/Skeleton';
+import { Btn, Chip, Eyebrow, Card } from '../components/ui/primitives';
+import { isSetter } from '../auth';
+import { useTheme } from '../theme';
 
 function GymPage() {
+  const P = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -15,18 +18,12 @@ function GymPage() {
   const [selectedWall, setSelectedWall] = useState(null);
   const [climbs, setClimbs] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Separate loading state for climbs so switching walls shows a sub-spinner
-  // without re-showing the full-page loading screen.
   const [climbsLoading, setClimbsLoading] = useState(false);
   const [error, setError] = useState(null);
-  // Two-step confirmation state for the archive action — shows a "are you sure"
-  // prompt before making the destructive API call.
   const [archiveConfirm, setArchiveConfirm] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const canEdit = isSetter();
 
-  // Load gym info and its walls on mount. Walls and gym are fetched in parallel
-  // since neither depends on the other's result.
   useEffect(() => {
     const fetchGymData = async () => {
       setLoading(true);
@@ -38,33 +35,22 @@ function GymPage() {
         ]);
         setGym(gymRes.data);
         setWalls(wallRes.data);
-        // Auto-select the first wall so the page isn't blank on load.
         setSelectedWall(wallRes.data[0]);
-      } catch (err) {
-        setError("Failed to load gym. Please try again.");
-      } finally {
-        setLoading(false);
-      }
+      } catch { setError('Failed to load gym. Please try again.'); }
+      finally { setLoading(false); }
     };
     fetchGymData();
   }, [id]);
 
-  // Refetch climbs whenever the selected wall changes. This is intentionally a
-  // separate effect from the gym fetch so wall switching doesn't re-fetch gym data.
   useEffect(() => {
     if (!selectedWall) return;
     const fetchClimbs = async () => {
       setClimbsLoading(true);
       try {
-        const res = await api.get(
-          `/api/gyms/${id}/walls/${selectedWall.id}/climbs/`,
-        );
+        const res = await api.get(`/api/gyms/${id}/walls/${selectedWall.id}/climbs/`);
         setClimbs(res.data);
-      } catch (err) {
-        setError("Failed to load climbs. Please try again.");
-      } finally {
-        setClimbsLoading(false);
-      }
+      } catch { setError('Failed to load climbs. Please try again.'); }
+      finally { setClimbsLoading(false); }
     };
     fetchClimbs();
   }, [selectedWall]);
@@ -73,195 +59,111 @@ function GymPage() {
     setArchiving(true);
     try {
       await api.post(`/api/gyms/${id}/walls/${selectedWall.id}/archive-climbs/`);
-      // Clear the local climbs list immediately so the wall appears empty
-      // without waiting for a refetch — optimistic UI update.
       setClimbs([]);
       setArchiveConfirm(false);
-    } catch {
-      setError("Failed to archive climbs. Please try again.");
-    } finally {
-      setArchiving(false);
-    }
+    } catch { setError('Failed to archive climbs. Please try again.'); }
+    finally { setArchiving(false); }
   };
 
   if (loading) return <PageSkeleton />;
 
-  if (error)
-    return (
-      <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center">
-        <div className="text-center px-6">
-          <p className="text-red-600 italic text-sm mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-lg bg-amber-900 text-amber-50 italic text-sm"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-
-  return (
-    <div className="min-h-screen bg-orange-50 font-serif">
-      <Navbar showBack backLabel="Back to gyms" backPath="/" />
-
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold italic text-amber-900 leading-tight mb-1">
-          {gym.name}
-        </h1>
-        <p className="text-sm italic text-amber-700 mb-2">{gym.location}</p>
-
-        <div className="flex items-center justify-between mb-4">
-          <span
-            className={`text-xs px-3 py-1 rounded-full font-bold italic
-            ${gym.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-          >
-            {gym.is_active ? "Open" : "Closed"}
-          </span>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate(`/gym/${id}/competitions`)}
-              className="text-xs italic px-4 py-2 rounded-full border border-amber-300 text-amber-800 hover:border-amber-500 transition-colors"
-            >
-              Competitions
-            </button>
-            <button
-              onClick={() => navigate(`/gym/${id}/leaderboard`)}
-              className="text-xs italic px-4 py-2 rounded-full border border-amber-300 text-amber-800 hover:border-amber-500 transition-colors"
-            >
-              Leaderboard
-            </button>
-          </div>
-        </div>
-
-        <div className="h-px bg-amber-200 my-6" />
-
-        {/* Wall selector — acts as a tab bar. Clicking a wall tab triggers the
-            climbs useEffect via setSelectedWall. */}
-        <p className="text-xs font-bold tracking-widest text-amber-700 mb-3">
-          SELECT WALL
-        </p>
-        {walls.length === 0 ? (
-          <p className="text-sm italic text-amber-500 mb-8">
-            No walls set up yet.
-          </p>
-        ) : (
-          <div className="flex gap-2 flex-wrap mb-4">
-            {walls.map((wall) => (
-              <button
-                key={wall.id}
-                type="button"
-                // Reset archiveConfirm when switching walls so the confirmation
-                // prompt doesn't carry over to the newly selected wall.
-                onClick={() => { setSelectedWall(wall); setArchiveConfirm(false); }}
-                className={`px-4 py-2 rounded-full text-sm italic border transition-colors
-                  ${
-                    selectedWall?.id === wall.id
-                      ? "bg-amber-900 text-amber-50 border-amber-900"
-                      : "border-amber-300 text-amber-800 hover:border-amber-500"
-                  }`}
-              >
-                {wall.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Archive action — setter only. Two-step: clicking the link shows a
-            confirmation row; only then can the API call be triggered. */}
-        {canEdit && selectedWall && (
-          <div className="mb-6">
-            {archiveConfirm ? (
-              <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3">
-                <p className="text-xs italic text-amber-800 flex-1">
-                  Archive all {climbs.length} active climb{climbs.length !== 1 ? "s" : ""} on {selectedWall.name}? This can't be undone.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleArchiveWall}
-                  disabled={archiving}
-                  className="text-xs italic px-3 py-1.5 rounded-lg bg-red-700 text-white hover:bg-red-800 transition-colors disabled:opacity-50"
-                >
-                  {archiving ? "Archiving…" : "Yes, archive"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setArchiveConfirm(false)}
-                  className="text-xs italic px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:border-amber-500 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              // Disabled when there are no climbs — nothing to archive.
-              <button
-                type="button"
-                onClick={() => setArchiveConfirm(true)}
-                disabled={climbs.length === 0}
-                className="text-xs italic text-amber-500 hover:text-amber-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                Archive all climbs on this wall
-              </button>
-            )}
-          </div>
-        )}
-
-        {selectedWall && (
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <p className="text-xs font-bold tracking-widest text-amber-700">
-                {selectedWall.name.toUpperCase()} —{" "}
-                {climbsLoading ? "..." : `${climbs.length} CLIMBS`}
-              </p>
-              <button
-                type="button"
-                onClick={() =>
-                  navigate(`/gym/${id}/wall/${selectedWall.id}/archived`)
-                }
-                className="text-xs italic text-amber-500 hover:text-amber-700 transition-colors"
-              >
-                View archived
-              </button>
-            </div>
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() =>
-                  navigate(`/gym/${id}/wall/${selectedWall.id}/add-climb`)
-                }
-                className="text-xs italic px-4 py-2 rounded-full bg-amber-900 text-amber-50 border border-amber-900 hover:bg-amber-800 transition-colors"
-              >
-                + Add climb
-              </button>
-            )}
-          </div>
-        )}
-
-        {climbsLoading ? (
-          <p className="text-sm italic text-amber-500">Loading climbs...</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {climbs.map((climb) => (
-              <ClimbCard
-                key={climb.id}
-                climb={climb}
-                gymId={id}
-                wallId={selectedWall?.id}
-              />
-            ))}
-          </div>
-        )}
-
-        {!climbsLoading && climbs.length === 0 && selectedWall && (
-          <div className="text-center py-16 text-amber-700 italic text-sm">
-            {canEdit
-              ? "No climbs on this wall yet — add one above."
-              : "No climbs on this wall yet."}
-          </div>
-        )}
+  if (error) return (
+    <div style={{ minHeight: '100vh', background: '#fbf5e6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center', padding: '0 24px' }}>
+        <p style={{ fontFamily: '"Newsreader", serif', fontStyle: 'italic', color: '#bb5b46', fontSize: 14, marginBottom: 16 }}>{error}</p>
+        <button onClick={() => window.location.reload()} style={{ fontFamily: '"Mulish", sans-serif', fontWeight: 700, fontSize: 13.5, padding: '10px 20px', borderRadius: 12, background: '#cf6f49', color: '#fff', border: 'none', cursor: 'pointer' }}>Retry</button>
       </div>
     </div>
+  );
+
+  const headerRight = (
+    <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <Chip tone={gym.is_active ? 'open' : 'closed'} style={{ background: 'rgba(255,255,255,.5)' }}>
+        {gym.is_active ? 'Open' : 'Closed'}
+      </Chip>
+      <div style={{ flex: 1 }} />
+      <button onClick={() => navigate(`/gym/${id}/competitions`)}
+        style={{ fontFamily: P.body, fontWeight: 600, fontSize: 12, padding: '6px 13px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(58,67,41,.28)', background: 'rgba(255,255,255,.45)', color: P.skyText }}>
+        Competitions
+      </button>
+      <button onClick={() => navigate(`/gym/${id}/leaderboard`)}
+        style={{ fontFamily: P.body, fontWeight: 600, fontSize: 12, padding: '6px 13px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(58,67,41,.28)', background: 'rgba(255,255,255,.45)', color: P.skyText }}>
+        Leaderboard
+      </button>
+    </div>
+  );
+
+  return (
+    <PageShell back backLabel="Your gyms" backPath="/" eyebrow={gym.location} title={gym.name} right={headerRight} heroHeight={176}>
+
+      <Eyebrow style={{ marginBottom: 10 }}>Select wall</Eyebrow>
+      {walls.length === 0 ? (
+        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, marginBottom: 24 }}>No walls set up yet.</p>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+          {walls.map(w => {
+            const sel = selectedWall?.id === w.id;
+            return (
+              <button key={w.id} type="button"
+                onClick={() => { setSelectedWall(w); setArchiveConfirm(false); }}
+                style={{ fontFamily: P.body, fontWeight: 600, fontSize: 13, padding: '7px 15px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${sel ? P.primary : P.line}`, background: sel ? P.primary : P.card, color: sel ? '#fff' : P.ink, transition: 'all .12s' }}>
+                {w.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {selectedWall && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+            <Eyebrow>{selectedWall.name} · {climbsLoading ? '…' : `${climbs.length} climbs`}</Eyebrow>
+            <button onClick={() => navigate(`/gym/${id}/wall/${selectedWall.id}/archived`)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, padding: 0 }}>
+              View archived
+            </button>
+          </div>
+          {canEdit && <Btn size="sm" onClick={() => navigate(`/gym/${id}/wall/${selectedWall.id}/add-climb`)}>+ Add climb</Btn>}
+        </div>
+      )}
+
+      {canEdit && selectedWall && (
+        <div style={{ marginBottom: 18 }}>
+          {archiveConfirm ? (
+            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderColor: P.primary }}>
+              <p style={{ flex: 1, fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink, margin: 0 }}>
+                Archive all {climbs.length} climbs on {selectedWall.name}? This can't be undone.
+              </p>
+              <Btn size="sm" variant="danger" onClick={handleArchiveWall} disabled={archiving}>
+                {archiving ? 'Archiving…' : 'Yes, archive'}
+              </Btn>
+              <Btn size="sm" variant="ghost" onClick={() => setArchiveConfirm(false)}>Cancel</Btn>
+            </Card>
+          ) : (
+            <button type="button" onClick={() => setArchiveConfirm(true)} disabled={climbs.length === 0}
+              style={{ background: 'none', border: 'none', cursor: climbs.length === 0 ? 'default' : 'pointer', fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, padding: 0, opacity: climbs.length === 0 ? .3 : 1 }}>
+              Archive all climbs on this wall
+            </button>
+          )}
+        </div>
+      )}
+
+      {climbsLoading ? (
+        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3 }}>Loading climbs…</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 13 }}>
+          {climbs.map(climb => (
+            <ClimbCard key={climb.id} climb={climb} gymId={id} wallId={selectedWall?.id} />
+          ))}
+        </div>
+      )}
+
+      {!climbsLoading && climbs.length === 0 && selectedWall && (
+        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, textAlign: 'center', padding: '40px 0' }}>
+          {canEdit ? 'No climbs on this wall yet — add one above.' : 'No climbs on this wall yet.'}
+        </p>
+      )}
+    </PageShell>
   );
 }
 

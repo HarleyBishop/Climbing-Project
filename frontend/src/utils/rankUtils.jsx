@@ -278,19 +278,16 @@ function RankIcon({ name, size = 20 }) {
 // showName=false gives a compact icon-only version for tight spaces (e.g.
 // leaderboard rows). iconSize controls the SVG dimensions independently of
 // the badge's text size.
-export function RankBadge({ rank, showName = true, iconSize = 20 }) {
+export function RankBadge({ rank, showName = true, iconSize = 16 }) {
   return (
-    <div
-      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded"
-      style={{ backgroundColor: rank.bg }}
-    >
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 8, background: rank.bg }}>
       <RankIcon name={rank.name} size={iconSize} />
       {showName && (
-        <span className="text-xs font-bold italic" style={{ color: rank.color }}>
+        <span style={{ fontFamily: '"Mulish", system-ui, sans-serif', fontSize: 11.5, fontWeight: 700, color: rank.color }}>
           {rank.name}
         </span>
       )}
-    </div>
+    </span>
   );
 }
 

@@ -1,48 +1,36 @@
-// Reusable skeleton components for loading states.
-// All use Tailwind's animate-pulse with amber tones to match the app palette.
+// Skeleton loading components that match the Ghibli theme palette.
+// Used while API data is in flight so the page never shows a blank state.
 
-function Bar({ className = "" }) {
-  return <div className={`bg-amber-200 rounded animate-pulse ${className}`} />;
+function Bar({ style = {} }) {
+  return <div style={{ background: '#efe7d4', borderRadius: 8, ...style }} className="animate-pulse" />;
 }
 
-// Mimics a single gym/climb card row
 export function CardSkeleton() {
   return (
-    <div className="flex overflow-hidden rounded-xl border border-amber-200 bg-amber-50 mb-3">
-      <div className="w-2 shrink-0 bg-amber-200 animate-pulse" />
-      <div className="flex-1 px-4 py-3 flex flex-col gap-2">
-        <Bar className="h-4 w-2/3" />
-        <Bar className="h-3 w-1/3" />
-        <div className="flex gap-2 mt-1">
-          <Bar className="h-5 w-14 rounded-full" />
-          <Bar className="h-5 w-14 rounded-full" />
+    <div style={{ background: '#fffaef', border: '1px solid #e8ddc6', borderRadius: 15, padding: 15, marginBottom: 11 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Bar style={{ width: 11, height: 11, borderRadius: '50%' }} />
+        <div style={{ flex: 1 }}>
+          <Bar style={{ height: 15, width: '55%', marginBottom: 8 }} />
+          <Bar style={{ height: 11, width: '75%' }} />
         </div>
+        <Bar style={{ height: 22, width: 48, borderRadius: 999 }} />
       </div>
     </div>
   );
 }
 
-// Full-page skeleton — replaces the centred "Loading..." screen on every page.
-// Shows a navbar outline + title block + a few card skeletons so the page
-// structure is recognisable while data loads rather than being totally blank.
 export function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-orange-50 font-serif">
-      {/* navbar */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-amber-200 bg-orange-50">
-        <Bar className="h-5 w-28" />
-        <div className="flex items-center gap-3">
-          <Bar className="h-9 w-9 rounded-full" />
-          <Bar className="h-4 w-14" />
+    <div style={{ minHeight: '100vh', background: '#fbf5e6' }}>
+      <div style={{ height: 160, background: 'linear-gradient(180deg,#bfe2dd 0%,#d6e7d8 40%,#eef2dc 78%,#f6f1de 100%)' }} />
+      <div style={{ marginTop: -20, background: '#fbf5e6', borderRadius: '22px 22px 0 0', boxShadow: '0 -8px 24px rgba(40,40,30,.10)', padding: '22px 20px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <Bar style={{ height: 28, width: '40%', marginBottom: 24 }} />
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
         </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <Bar className="h-8 w-56 mb-3" />
-        <Bar className="h-4 w-36 mb-8" />
-        <CardSkeleton />
-        <CardSkeleton />
-        <CardSkeleton />
       </div>
     </div>
   );

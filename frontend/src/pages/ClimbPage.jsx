@@ -1,24 +1,16 @@
-import { useState, useEffect } from "react";
-import api from "../api";
-import { useParams, useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
-import Navbar from "../components/Navbar";
-import { PageSkeleton } from "../components/Skeleton";
+import { useState, useEffect } from 'react';
+import api from '../api';
+import { useParams, useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
+import { PageSkeleton } from '../components/Skeleton';
+import { useTheme, HOLD, GRAIN } from '../theme';
+import { Card, Btn, Eyebrow, Divider, SectionLabel, GradePills, Stars, Modal, Field, Avatar } from '../components/ui/primitives';
+import { getDecodedToken } from '../auth';
 
-// Maps the colour string stored in the DB to a hex value for the hero banner.
-// Kept local to ClimbPage since it's the only page that uses the full-colour
-// hero treatment — other pages use the colour only as a small accent.
-const COLOUR_MAP = {
-  Green: "#4a8c5c",
-  Orange: "#c4622d",
-  Blue: "#3a6fa8",
-  Pink: "#a0416e",
-  Yellow: "#c9a020",
-  Black: "#555050",
-  White: "#f5f5f0",
-};
+const GRADES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 function ClimbPage() {
+  const P = useTheme();
   const [climb, setClimb] = useState();
   const [gradeVote, setGradeVote] = useState([]);
   const [sends, setSends] = useState([]);
@@ -27,60 +19,48 @@ function ClimbPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Modal visibility — modals are rendered inline (not portals) so they
-  // inherit the page's z-index stack. z-50 puts them above everything else.
   const [showSendModal, setShowSendModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
-
-  // Action-level errors are shown inside their respective modals rather than
-  // globally, so the user can see what went wrong in context.
   const [sendError, setSendError] = useState(null);
   const [reviewError, setReviewError] = useState(null);
   const [voteError, setVoteError] = useState(null);
 
-  const [attempts, setAttempts] = useState("");
-  const [comment, setComment] = useState("");
+  const [attempts, setAttempts] = useState('');
+  const [comment, setComment] = useState('');
   const [stars, setStars] = useState(0);
-  const [reviewAttempts, setReviewAttempts] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
+  const [reviewAttempts, setReviewAttempts] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
 
   const { gymId, wallId, climbId } = useParams();
   const navigate = useNavigate();
 
-  const GRADES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-  const token = localStorage.getItem("access");
+  const token = localStorage.getItem('access');
   const currentUserId = jwtDecode(token).user_id;
-  // Find this user's own vote and send so we can show "you've already voted/sent"
-  // state without a separate API call.
-  const myVote = gradeVote.find((vote) => vote.user === currentUserId);
-  const mySend = sends.find((send) => send.user === currentUserId);
+  const decoded = getDecodedToken();
+  const username = decoded?.username ?? '';
 
-  // All climb data is fetched in parallel on mount. If any request fails the
-  // error state is set and the error screen is shown.
+  const myVote = gradeVote.find(v => v.user === currentUserId);
+  const mySend = sends.find(s => s.user === currentUserId);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const [climbRes, gradeVoteres, reviewres, videosres, sendsres] =
-          await Promise.all([
-            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/`),
-            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`),
-            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`),
-            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`),
-            api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`),
-          ]);
+        const [climbRes, voteRes, reviewRes, videoRes, sendRes] = await Promise.all([
+          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/`),
+          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`),
+          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`),
+          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`),
+          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`),
+        ]);
         setClimb(climbRes.data);
-        setGradeVote(gradeVoteres.data);
-        setReviews(reviewres.data);
-        setVideos(videosres.data);
-        setSends(sendsres.data);
-      } catch (err) {
-        setError("Failed to load climb. Please try again.");
-      } finally {
-        setLoading(false);
-      }
+        setGradeVote(voteRes.data);
+        setReviews(reviewRes.data);
+        setVideos(videoRes.data);
+        setSends(sendRes.data);
+      } catch { setError('Failed to load climb. Please try again.'); }
+      finally { setLoading(false); }
     };
     fetchData();
   }, [gymId, wallId, climbId]);
@@ -88,431 +68,195 @@ function ClimbPage() {
   const handleVote = async (grade) => {
     setVoteError(null);
     try {
-      await api.post(
-        `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`,
-        { grade },
-      );
-      // Refetch votes after posting so the community grade update from the
-      // backend is reflected immediately without a page refresh.
-      const res = await api.get(
-        `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`,
-      );
+      await api.post(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`, { grade });
+      const res = await api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`);
       setGradeVote(res.data);
-    } catch (err) {
-      setVoteError("Couldn't save your vote. Please try again.");
-    }
+    } catch { setVoteError("Couldn't save your vote. Please try again."); }
   };
 
   const handleLogSend = async () => {
     setSendError(null);
-    if (!attempts || parseInt(attempts) < 1) {
-      setSendError("Please enter a valid number of attempts.");
-      return;
-    }
+    if (!attempts || parseInt(attempts) < 1) { setSendError('Please enter a valid number of attempts.'); return; }
     try {
-      await api.post(
-        `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`,
-        { attempts: parseInt(attempts) },
-      );
-      // Refetch sends to update the send count stat and the "you sent this" strip.
-      const res = await api.get(
-        `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`,
-      );
+      await api.post(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`, { attempts: parseInt(attempts) });
+      const res = await api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`);
       setSends(res.data);
-      setAttempts("");
+      setAttempts('');
       setShowSendModal(false);
-    } catch (err) {
-      setSendError("Couldn't log your send. Please try again.");
-    }
+    } catch { setSendError("Couldn't log your send. Please try again."); }
   };
 
   const handleReview = async () => {
     setReviewError(null);
-    if (!comment.trim()) {
-      setReviewError("Please write a comment.");
-      return;
-    }
-    if (stars === 0) {
-      setReviewError("Please select a star rating.");
-      return;
-    }
-    if (!reviewAttempts || parseInt(reviewAttempts) < 1) {
-      setReviewError("Please enter a valid number of attempts.");
-      return;
-    }
+    if (!comment.trim()) { setReviewError('Please write a comment.'); return; }
+    if (stars === 0) { setReviewError('Please select a star rating.'); return; }
+    if (!reviewAttempts || parseInt(reviewAttempts) < 1) { setReviewError('Please enter a valid number of attempts.'); return; }
     try {
-      await api.post(
-        `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`,
-        { comment, stars, attempts: parseInt(reviewAttempts) },
-      );
-
-      // Video upload is optional — only POST it if the user entered a URL.
-      // It's a separate request because the video endpoint is its own resource.
+      await api.post(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`, { comment, stars, attempts: parseInt(reviewAttempts) });
       if (videoUrl) {
-        await api.post(
-          `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`,
-          { video_url: videoUrl },
-        );
-        const vidRes = await api.get(
-          `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`,
-        );
+        await api.post(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`, { video_url: videoUrl });
+        const vidRes = await api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`);
         setVideos(vidRes.data);
       }
-
-      const revRes = await api.get(
-        `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`,
-      );
+      const revRes = await api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`);
       setReviews(revRes.data);
-      setComment("");
-      setStars(0);
-      setReviewAttempts("");
-      setVideoUrl("");
+      setComment(''); setStars(0); setReviewAttempts(''); setVideoUrl('');
       setShowReviewModal(false);
-    } catch (err) {
-      setReviewError("Couldn't submit your review. Please try again.");
-    }
+    } catch { setReviewError("Couldn't submit your review. Please try again."); }
   };
 
   if (loading) return <PageSkeleton />;
 
-  if (error)
-    return (
-      <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center">
-        <div className="text-center px-6">
-          <p className="text-red-600 italic text-sm mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-lg bg-amber-900 text-amber-50 italic text-sm"
-          >
-            Retry
-          </button>
-        </div>
+  if (error) return (
+    <div style={{ minHeight: '100vh', background: P.sheet, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center', padding: '0 24px' }}>
+        <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 14, marginBottom: 16 }}>{error}</p>
+        <Btn onClick={() => window.location.reload()}>Retry</Btn>
       </div>
-    );
+    </div>
+  );
 
-  const colour = COLOUR_MAP[climb.colour] || "#c9a98a";
+  const hold = HOLD[climb.colour] || '#cd6f3f';
 
   return (
-    <div className="min-h-screen bg-orange-50 font-serif">
-      <Navbar
-        showBack
-        backLabel={climb?.wall_name || "Back"}
-        backPath={`/gym/${gymId}`}
-      />
-
-      {/* Colour hero — uses the climb's hold colour as a full-width banner.
-          The tags at the bottom use bg-black/30 (30% opacity black) so they
-          remain readable regardless of the climb colour behind them. */}
-      <div
-        className="w-full h-44 flex items-end p-4 gap-2"
-        style={{ background: colour }}
-      >
-        <span className="text-xs px-3 py-1 rounded-full bg-black/30 text-white italic">
-          {climb.colour}
-        </span>
-        <span className="text-xs px-3 py-1 rounded-full bg-black/30 text-white italic">
-          {new Date(climb.set_at).toLocaleDateString("en-AU", {
-            day: "numeric",
-            month: "short",
-          })}
-        </span>
-        <span className="text-xs px-3 py-1 rounded-full bg-black/30 text-white italic">
-          {climb.wall_name}
-        </span>
+    <div style={{ minHeight: '100vh', background: P.sheet }}>
+      {/* Full-bleed colour hero using the climb's hold colour */}
+      <div style={{ position: 'relative', minHeight: 192, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(165deg, ${hold} 0%, ${hold} 55%, rgba(0,0,0,.18) 130%)` }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(90% 70% at 75% 12%, rgba(255,255,255,.3), transparent 60%)' }} />
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: GRAIN, backgroundSize: '160px 160px', opacity: 0.13, mixBlendMode: 'soft-light' }} />
+        <div style={{ position: 'relative', maxWidth: 640, margin: '0 auto', padding: '16px 20px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <button onClick={() => navigate(`/gym/${gymId}`)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: P.body, fontWeight: 600, fontSize: 13.5, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 17 }}>‹</span> {climb.wall_name}
+            </button>
+            <Avatar name={username} size={30} onClick={() => navigate('/profile')} />
+          </div>
+          <div style={{ marginTop: 30, paddingBottom: 30 }}>
+            <p style={{ fontFamily: P.body, fontWeight: 700, fontSize: 10.5, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,.85)', margin: '0 0 7px' }}>
+              {climb.colour} hold · {climb.wall_name}
+            </p>
+            <h1 style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 34, lineHeight: 1, margin: 0, color: '#fff', textShadow: '0 2px 14px rgba(0,0,0,.22)' }}>{climb.name}</h1>
+            <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14.5, color: 'rgba(255,255,255,.92)', margin: '8px 0 0' }}>
+              Set by @{climb.added_by} · {new Date(climb.set_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 py-6">
-        <h1 className="text-3xl font-bold italic text-amber-900 mb-1">
-          {climb.name}
-        </h1>
-        <p className="text-sm italic text-amber-600 mb-6">
-          Set by @{climb.added_by}
-        </p>
+      {/* Cream sheet */}
+      <div style={{ position: 'relative', marginTop: -20, background: P.sheet, borderRadius: '22px 22px 0 0', boxShadow: '0 -8px 24px rgba(40,40,30,.10)' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: '20px 20px 40px' }}>
 
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {[
-            { label: "Setter grade", value: `V${climb.suggested_grade}` },
-            {
-              label: "Community",
-              // community_grade is null until at least one vote exists.
-              value: climb.community_grade ? `V${climb.community_grade}` : "—",
-            },
-            { label: "Sends", value: sends.length },
-            { label: "Reviews", value: reviews.length },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center"
-            >
-              <p className="text-lg font-bold italic text-amber-900">
-                {stat.value}
+          {/* Stats row */}
+          <div style={{ display: 'flex', border: `1px solid ${P.line}`, borderRadius: 14, background: P.card, padding: '14px 0', marginBottom: 16 }}>
+            {[
+              { v: `V${climb.suggested_grade}`, l: 'Setter' },
+              { v: climb.community_grade ? `V${climb.community_grade}` : '—', l: 'Community' },
+              { v: sends.length, l: 'Sends' },
+              { v: reviews.length, l: 'Reviews' },
+            ].map((s, i) => (
+              <div key={s.l} style={{ flex: 1, textAlign: 'center', borderRight: i < 3 ? `1px solid ${P.line}` : 'none', padding: '0 4px' }}>
+                <p style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 23, margin: 0, color: P.ink, lineHeight: 1 }}>{s.v}</p>
+                <p style={{ fontFamily: P.body, fontWeight: 600, fontSize: 9.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.ink2, margin: '5px 0 0' }}>{s.l}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Send strip */}
+          {mySend ? (
+            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', background: P.goodBg, borderColor: 'transparent', marginBottom: 16 }}>
+              <span style={{ color: P.good, fontSize: 17 }}>✓</span>
+              <p style={{ flex: 1, fontFamily: P.serif, fontStyle: 'italic', fontSize: 14.5, color: P.good, margin: 0 }}>
+                You sent this! <strong style={{ fontStyle: 'normal', fontFamily: P.body, fontWeight: 700 }}>{mySend.attempts} attempts</strong>
               </p>
-              <p className="text-xs italic text-amber-500 mt-1">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Send strip — shows different UI depending on whether the user has
-            already logged a send. mySend is derived from the sends array using
-            the current user's ID from the JWT. */}
-        {mySend ? (
-          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-6">
-            <p className="text-sm italic text-green-800">
-              You sent this!{" "}
-              <span className="font-bold">{mySend.attempts} attempts</span>
-            </p>
-            <button
-              onClick={() => setShowSendModal(true)}
-              className="text-xs italic px-4 py-2 rounded-full border border-green-400 text-green-700"
-            >
-              Edit
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
-            <p className="text-sm italic text-amber-800">
-              Logged your send yet?
-            </p>
-            <button
-              onClick={() => setShowSendModal(true)}
-              className="text-xs italic px-4 py-2 rounded-full bg-amber-900 text-amber-50"
-            >
-              Log send
-            </button>
-          </div>
-        )}
-
-        <div className="h-px bg-amber-200 mb-6" />
-
-        <p className="text-xs font-bold tracking-widest text-amber-700 mb-3">
-          VOTE ON GRADE
-        </p>
-        {voteError && (
-          <p className="text-red-600 italic text-xs mb-2">{voteError}</p>
-        )}
-        {/* Grade voting buttons — highlighted when it matches myVote.grade.
-            The backend uses update_or_create so clicking a grade always works
-            whether it's the user's first vote or a re-vote. */}
-        <div className="flex gap-2 flex-wrap mb-8">
-          {GRADES.map((grade) => (
-            <button
-              key={grade}
-              type="button"
-              onClick={() => handleVote(grade)}
-              className={`px-3 py-1 rounded-full text-sm italic border transition-colors
-                ${
-                  myVote?.grade === grade
-                    ? "bg-amber-900 text-amber-50 border-amber-900"
-                    : "border-amber-300 text-amber-800 hover:border-amber-500"
-                }`}
-            >
-              V{grade}
-            </button>
-          ))}
-        </div>
-
-        <div className="h-px bg-amber-200 mb-6" />
-
-        <p className="text-xs font-bold tracking-widest text-amber-700 mb-3">
-          VIDEOS ({videos.length})
-        </p>
-        <div className="flex gap-3 flex-wrap mb-8">
-          {videos.map((video) => (
-            <video
-              key={video.id}
-              width="200"
-              height="150"
-              controls
-              className="rounded-lg border border-amber-200"
-            >
-              <source src={video.video_url} type="video/mp4" />
-            </video>
-          ))}
-          {videos.length === 0 && (
-            <p className="text-sm italic text-amber-500">No videos yet.</p>
+              <Btn size="sm" variant="ghost" onClick={() => setShowSendModal(true)}>Edit</Btn>
+            </Card>
+          ) : (
+            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', marginBottom: 16 }}>
+              <p style={{ flex: 1, fontFamily: P.serif, fontStyle: 'italic', fontSize: 15, color: P.ink, margin: 0 }}>Logged your send yet?</p>
+              <Btn size="sm" onClick={() => setShowSendModal(true)}>Log send</Btn>
+            </Card>
           )}
-        </div>
 
-        <div className="h-px bg-amber-200 mb-6" />
+          {/* Grade vote */}
+          <SectionLabel style={{ margin: '24px 0 10px' }}>Vote the grade</SectionLabel>
+          {voteError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, margin: '0 0 8px' }}>{voteError}</p>}
+          <GradePills grades={GRADES} value={myVote?.grade ?? null} onPick={handleVote} />
+          <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, margin: '10px 0 0' }}>
+            {myVote !== undefined ? `You voted V${myVote.grade}. Community sits at V${climb.community_grade || climb.suggested_grade}.` : 'Tap a grade to add your vote.'}
+          </p>
 
-        <p className="text-xs font-bold tracking-widest text-amber-700 mb-4">
-          REVIEWS ({reviews.length})
-        </p>
-        <div className="flex flex-col gap-4 mb-8">
-          {reviews.map((review) => (
-            <div key={review.id} className="border-b border-amber-200 pb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-xs font-bold text-amber-900">
-                    {review.username?.slice(0, 2).toUpperCase()}
-                  </div>
-                  <span className="text-sm font-bold italic text-amber-900">
-                    @{review.username}
-                  </span>
-                </div>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span
-                      key={star}
-                      className={
-                        star <= review.stars
-                          ? "text-amber-600"
-                          : "text-amber-200"
-                      }
-                    >
-                      ★
-                    </span>
-                  ))}
+          <Divider m={24} />
+
+          {/* Videos */}
+          <SectionLabel>Beta videos · {videos.length}</SectionLabel>
+          <div style={{ display: 'flex', gap: 11, flexWrap: 'wrap', marginBottom: 24 }}>
+            {videos.map(video => (
+              <video key={video.id} width="180" height="120" controls style={{ borderRadius: 12, border: `1px solid ${P.line}` }}>
+                <source src={video.video_url} type="video/mp4" />
+              </video>
+            ))}
+            {videos.length === 0 && (
+              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3 }}>No videos yet.</p>
+            )}
+          </div>
+
+          <Divider m={4} />
+
+          {/* Reviews */}
+          <SectionLabel style={{ margin: '24px 0 12px' }}>Reviews · {reviews.length}</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 20 }}>
+            {reviews.map((rv, i) => (
+              <div key={rv.id} style={{ borderBottom: i < reviews.length - 1 ? `1px solid ${P.line}` : 'none', paddingBottom: i < reviews.length - 1 ? 18 : 0 }}>
+                <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 16.5, lineHeight: 1.4, color: P.ink, margin: 0 }}>"{rv.comment}"</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 11 }}>
+                  <Avatar name={rv.username} size={26} />
+                  <span style={{ fontFamily: P.body, fontWeight: 600, fontSize: 12.5, color: P.ink }}>@{rv.username}</span>
+                  <Stars n={rv.stars} />
+                  <span style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink2, marginLeft: 'auto' }}>{rv.attempts} attempts</span>
                 </div>
               </div>
-              <p className="text-sm italic text-amber-800 mb-1">
-                "{review.comment}"
-              </p>
-              <p className="text-xs italic text-amber-500">
-                {review.attempts} attempts
-              </p>
-            </div>
-          ))}
-          {reviews.length === 0 && (
-            <p className="text-sm italic text-amber-500">No reviews yet.</p>
-          )}
+            ))}
+            {reviews.length === 0 && (
+              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3 }}>No reviews yet.</p>
+            )}
+          </div>
+          <Btn full variant="ghost" onClick={() => setShowReviewModal(true)}>+ Write a review</Btn>
         </div>
-
-        <button
-          onClick={() => setShowReviewModal(true)}
-          className="w-full py-3 rounded-xl border border-amber-300 text-amber-700 italic text-sm"
-        >
-          + Write review
-        </button>
       </div>
 
-      {/* Send modal — clicking the backdrop closes the modal and clears errors.
-          e.stopPropagation() on the inner div prevents the backdrop click
-          handler from firing when the user clicks inside the modal. */}
+      {/* Log send modal */}
       {showSendModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => { setShowSendModal(false); setSendError(null); }}
-        >
-          <div
-            className="bg-amber-50 rounded-xl border border-amber-200 p-6 w-80 font-serif"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-bold italic text-amber-900 mb-1">
-              Log your send
-            </h2>
-            <p className="text-xs italic text-amber-600 mb-4">
-              How many attempts did it take?
-            </p>
-            {sendError && (
-              <p className="text-red-600 italic text-xs mb-3">{sendError}</p>
-            )}
-            <label className="text-xs italic text-amber-800 block mb-1">
-              Attempts
-            </label>
-            <input
-              type="number"
-              placeholder="e.g. 5"
-              value={attempts}
-              onChange={(e) => setAttempts(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-amber-900 font-serif mb-4"
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={handleLogSend}
-                className="flex-1 py-2 rounded-lg bg-amber-900 text-amber-50 italic text-sm"
-              >
-                Log send
-              </button>
-              <button
-                onClick={() => { setShowSendModal(false); setSendError(null); }}
-                className="flex-1 py-2 rounded-lg border border-amber-300 text-amber-700 italic text-sm"
-              >
-                Cancel
-              </button>
-            </div>
+        <Modal title="Log your send" subtitle="How many attempts did it take?" onClose={() => { setShowSendModal(false); setSendError(null); }}>
+          {sendError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 10 }}>{sendError}</p>}
+          <Field label="Attempts" value={attempts} onChange={setAttempts} placeholder="e.g. 5" type="number" />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Btn full onClick={handleLogSend}>Log send</Btn>
+            <Btn full variant="ghost" onClick={() => { setShowSendModal(false); setSendError(null); }}>Cancel</Btn>
           </div>
-        </div>
+        </Modal>
       )}
 
-      {/* Review modal — video URL is optional, submitted alongside the review
-          as a separate API call if provided. */}
+      {/* Write review modal */}
       {showReviewModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => { setShowReviewModal(false); setReviewError(null); }}
-        >
-          <div
-            className="bg-amber-50 rounded-xl border border-amber-200 p-6 w-80 font-serif"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-bold italic text-amber-900 mb-1">
-              Write a review
-            </h2>
-            <p className="text-xs italic text-amber-600 mb-4">
-              Share your thoughts on this climb
-            </p>
-            {reviewError && (
-              <p className="text-red-600 italic text-xs mb-3">{reviewError}</p>
-            )}
-
-            <label className="text-xs italic text-amber-800 block mb-1">Comment</label>
-            <textarea
-              placeholder="What did you think?"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-amber-900 font-serif mb-3 h-20 resize-none"
-            />
-
-            <label className="text-xs italic text-amber-800 block mb-2">Stars</label>
-            <div className="flex gap-2 mb-3">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  onClick={() => setStars(star)}
-                  className={`text-2xl cursor-pointer ${star <= stars ? "text-amber-600" : "text-amber-200"}`}
-                >
-                  ★
-                </span>
-              ))}
+        <Modal title="Write a review" subtitle="Share your beta on this climb" onClose={() => { setShowReviewModal(false); setReviewError(null); }}>
+          {reviewError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 10 }}>{reviewError}</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Field label="Comment" value={comment} onChange={setComment} placeholder="What did you think?" textarea />
+            <div>
+              <p style={{ fontFamily: P.body, fontWeight: 700, fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.ink2, marginBottom: 8 }}>Stars</p>
+              <Stars n={stars} size={26} onPick={setStars} />
             </div>
-
-            <label className="text-xs italic text-amber-800 block mb-1">Attempts</label>
-            <input
-              type="number"
-              placeholder="e.g. 3"
-              value={reviewAttempts}
-              onChange={(e) => setReviewAttempts(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-amber-900 font-serif mb-3"
-            />
-
-            <label className="text-xs italic text-amber-800 block mb-1">
-              Video URL (optional)
-            </label>
-            <input
-              type="url"
-              placeholder="https://..."
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-amber-900 font-serif mb-4"
-            />
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleReview}
-                className="flex-1 py-2 rounded-lg bg-amber-900 text-amber-50 italic text-sm"
-              >
-                Submit
-              </button>
-              <button
-                onClick={() => { setShowReviewModal(false); setReviewError(null); }}
-                className="flex-1 py-2 rounded-lg border border-amber-300 text-amber-700 italic text-sm"
-              >
-                Cancel
-              </button>
+            <Field label="Attempts" value={reviewAttempts} onChange={setReviewAttempts} placeholder="e.g. 3" type="number" />
+            <Field label="Video URL" optional value={videoUrl} onChange={setVideoUrl} placeholder="https://…" />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Btn full onClick={handleReview}>Submit</Btn>
+              <Btn full variant="ghost" onClick={() => { setShowReviewModal(false); setReviewError(null); }}>Cancel</Btn>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

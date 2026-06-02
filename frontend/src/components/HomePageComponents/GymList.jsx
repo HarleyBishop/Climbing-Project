@@ -1,137 +1,110 @@
-import { useState, useEffect } from "react";
-import api from "../../api";
-import GymCard from "./GymCard";
-import { CardSkeleton } from "../Skeleton";
+import { useState, useEffect } from 'react';
+import api from '../../api';
+import GymCard from './GymCard';
+import { CardSkeleton } from '../Skeleton';
+import { useTheme, HOLD } from '../../theme';
+import { SectionLabel, Eyebrow } from '../ui/primitives';
 
-const GYM_COLOURS = [
-  "bg-emerald-600",
-  "bg-orange-600",
-  "bg-blue-600",
-  "bg-pink-600",
-  "bg-yellow-600",
-  "bg-stone-600",
-];
-
+// Cycle through HOLD colours to give each gym a distinct dot strip.
+const HOLD_COLOURS = Object.values(HOLD);
 const PER_PAGE = 4;
 
 function GymList() {
+  const P = useTheme();
   const [allGyms, setAllGyms] = useState([]);
   const [myGyms, setMyGyms] = useState([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    Promise.all([api.get("/api/gyms/"), api.get("/api/gyms/my-gyms/")])
+    Promise.all([api.get('/api/gyms/'), api.get('/api/gyms/my-gyms/')])
       .then(([allRes, myRes]) => {
         setAllGyms(allRes.data);
         setMyGyms(myRes.data);
         setLoading(false);
       })
       .catch(() => {
-        setError("Failed to load gyms. Please refresh and try again.");
+        setError('Failed to load gyms. Please refresh and try again.');
         setLoading(false);
       });
   }, []);
 
   const filteredGyms = search.trim()
-    ? allGyms.filter(
-        (g) =>
-          g.name.toLowerCase().includes(search.toLowerCase()) ||
-          g.location.toLowerCase().includes(search.toLowerCase()),
-      )
+    ? allGyms.filter(g =>
+        g.name.toLowerCase().includes(search.toLowerCase()) ||
+        g.location.toLowerCase().includes(search.toLowerCase()))
     : null;
 
-  // Reset to first page whenever the search query changes.
-  const handleSearch = (val) => {
-    setSearch(val);
-    setPage(0);
-  };
+  const handleSearch = (val) => { setSearch(val); setPage(0); };
 
   const totalPages = Math.ceil(myGyms.length / PER_PAGE);
   const paginatedMyGyms = myGyms.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
-  if (loading)
-    return <div className="flex flex-col"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>;
+  if (loading) return (
+    <div>
+      <CardSkeleton />
+      <CardSkeleton />
+      <CardSkeleton />
+    </div>
+  );
 
-  if (error) return <div className="text-red-600 italic text-sm">{error}</div>;
+  if (error) return (
+    <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: '#bb5b46' }}>{error}</p>
+  );
 
   return (
-    <div className="flex flex-col">
-      <div className="relative mb-6">
-        <input
-          type="text"
-          placeholder="Search gyms..."
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="w-full px-4 py-2 rounded-xl border border-amber-300 bg-white text-amber-900 italic placeholder-amber-400 focus:outline-none focus:border-amber-500"
-        />
-        {search && (
-          <button
-            onClick={() => handleSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 hover:text-amber-600 text-lg"
-          >
-            ×
-          </button>
-        )}
+    <div>
+      {/* Search field */}
+      <div style={{ position: 'relative', marginBottom: 22 }}>
+        <div style={{ background: P.card, border: `1px solid ${P.line}`, borderRadius: 12, padding: '11px 15px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 13, height: 13, borderRadius: '50%', border: `1.5px solid ${P.ink3}`, flexShrink: 0, position: 'relative', display: 'inline-block' }} />
+          <input
+            type="text"
+            placeholder="Search gyms near you"
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontFamily: P.body, fontSize: 14, color: search ? P.ink : P.ink3 }}
+          />
+          {search && (
+            <button onClick={() => handleSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.ink3, fontSize: 18, lineHeight: 1 }}>×</button>
+          )}
+        </div>
       </div>
 
       {filteredGyms ? (
         <>
-          <p className="text-xs font-bold tracking-widest text-amber-700 mb-4">
-            RESULTS
-          </p>
-          {filteredGyms.length === 0 ? (
-            <p className="text-sm italic text-amber-500 mb-6">
-              No gyms match your search.
-            </p>
-          ) : (
-            filteredGyms.map((gym, index) => (
-              <GymCard
-                key={gym.id}
-                gym={gym}
-                colour={GYM_COLOURS[index % GYM_COLOURS.length]}
-              />
-            ))
-          )}
+          <SectionLabel right={<span style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink2 }}>{filteredGyms.length} found</span>}>Results</SectionLabel>
+          {filteredGyms.length === 0
+            ? <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, padding: '12px 0' }}>No gyms match your search.</p>
+            : filteredGyms.map((gym, index) => (
+                <GymCard key={gym.id} gym={gym} colour={HOLD_COLOURS[index % HOLD_COLOURS.length]} />
+              ))
+          }
         </>
       ) : (
         <>
-          <p className="text-xs font-bold tracking-widest text-amber-700 mb-4">
-            YOUR GYMS
-          </p>
+          <SectionLabel right={<span style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink2 }}>{myGyms.length} saved</span>}>Your gyms</SectionLabel>
           {myGyms.length === 0 ? (
-            <p className="text-sm italic text-amber-500 mb-2">
+            <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, padding: '12px 0' }}>
               Log a climb to see your gyms here.
             </p>
           ) : (
             <>
               {paginatedMyGyms.map((gym, index) => (
-                <GymCard
-                  key={gym.id}
-                  gym={gym}
-                  colour={GYM_COLOURS[(page * PER_PAGE + index) % GYM_COLOURS.length]}
-                />
+                <GymCard key={gym.id} gym={gym} colour={HOLD_COLOURS[(page * PER_PAGE + index) % HOLD_COLOURS.length]} />
               ))}
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-1 mb-2">
-                  <button
-                    onClick={() => setPage(p => p - 1)}
-                    disabled={page === 0}
-                    className="text-xs italic text-amber-700 hover:text-amber-900 disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                  <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+                    style={{ background: 'none', border: 'none', cursor: page === 0 ? 'default' : 'pointer', fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink2, opacity: page === 0 ? .3 : 1 }}>
                     ‹ Prev
                   </button>
-                  <span className="text-xs italic text-amber-500">
-                    {page + 1} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setPage(p => p + 1)}
-                    disabled={page === totalPages - 1}
-                    className="text-xs italic text-amber-700 hover:text-amber-900 disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
+                  <span style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink3 }}>{page + 1} / {totalPages}</span>
+                  <button onClick={() => setPage(p => p + 1)} disabled={page === totalPages - 1}
+                    style={{ background: 'none', border: 'none', cursor: page === totalPages - 1 ? 'default' : 'pointer', fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink2, opacity: page === totalPages - 1 ? .3 : 1 }}>
                     Next ›
                   </button>
                 </div>

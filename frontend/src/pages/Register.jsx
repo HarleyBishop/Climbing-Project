@@ -1,36 +1,12 @@
-import LoginRegisterForm from "../components/LoginRegisterComponents/LoginRegisterForm"
+import { AuthScaffold } from '../components/ui/PageShell';
+import LoginRegisterForm from '../components/LoginRegisterComponents/LoginRegisterForm';
 
 function Register() {
-    return (
-    <div className="flex min-h-screen font-serif">
-
-        {/* Form side */}
-        <div className="w-full md:w-1/2 bg-amber-50 flex flex-col px-16 pt-40 items-center ">
-            <div className="w-full max-w-sm">
-            <h1 className="text-amber-900 text-4xl font-bold italic leading-tight mb-6 ">
-                Ready to climb<br />above the haters?
-            </h1>
-
-            <p className="text-amber-800 italic text-lg mb-12 leading-relaxed">
-                Login and let's prove those 'V2 in my Gym',<br />
-                climbers wrong, one climb at a time!
-            </p>
-
-            <LoginRegisterForm route="/api/user/register/" method="register" />
-            </div>
-        </div>
-
-        {/* Image side */}
-        <div className="hidden md:block md:w-1/2 h-screen sticky top-0">
-            <img
-                src="/LoginRegisterImage.jpg"
-                alt="climbing"
-                className="w-full h-full object-cover"
-            />
-        </div>
-
-    </div>
-)
+  return (
+    <AuthScaffold headline="Start your" headlineItalic="climbing story.">
+      <LoginRegisterForm route="/api/user/register/" method="register" />
+    </AuthScaffold>
+  );
 }
 
-export default Register
+export default Register;

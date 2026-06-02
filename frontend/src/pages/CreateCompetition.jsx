@@ -1,212 +1,156 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import api from "../api";
-import Navbar from "../components/Navbar";
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import api from '../api';
+import { PageShell } from '../components/ui/PageShell';
+import { Btn, Field, Eyebrow, Card } from '../components/ui/primitives';
+import { useTheme } from '../theme';
 
 function CreateCompetition() {
+  const P = useTheme();
   const { gymId } = useParams();
   const navigate = useNavigate();
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [rules, setRules] = useState("");
-  const [compType, setCompType] = useState("qualifier");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [topX, setTopX] = useState("");
-  const [linkedQualifier, setLinkedQualifier] = useState("");
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [rules, setRules] = useState('');
+  const [compType, setCompType] = useState('qualifier');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [topX, setTopX] = useState('');
+  const [linkedQualifier, setLinkedQualifier] = useState('');
   const [divisions, setDivisions] = useState([]);
-  const [newDivision, setNewDivision] = useState("");
+  const [newDivision, setNewDivision] = useState('');
   const [rounds, setRounds] = useState([]);
-  const [newRound, setNewRound] = useState("");
+  const [newRound, setNewRound] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const addDivision = () => {
-    if (newDivision.trim()) {
-      setDivisions([...divisions, newDivision.trim()]);
-      setNewDivision("");
-    }
+    if (newDivision.trim()) { setDivisions([...divisions, newDivision.trim()]); setNewDivision(''); }
   };
-
   const addRound = () => {
-    if (newRound.trim()) {
-      setRounds([...rounds, newRound.trim()]);
-      setNewRound("");
-    }
+    if (newRound.trim()) { setRounds([...rounds, newRound.trim()]); setNewRound(''); }
   };
 
   const handleSubmit = async () => {
     setError(null);
-    if (!title.trim()) return setError("Please enter a title.");
-    if (!startDate) return setError("Please set a start date.");
-    if (!endDate) return setError("Please set an end date.");
-    if (new Date(endDate) <= new Date(startDate)) return setError("End date must be after start date.");
-
+    if (!title.trim()) return setError('Please enter a title.');
+    if (!startDate) return setError('Please set a start date.');
+    if (!endDate) return setError('Please set an end date.');
+    if (new Date(endDate) <= new Date(startDate)) return setError('End date must be after start date.');
     setLoading(true);
     try {
       const payload = {
-        title,
-        description,
-        rules,
-        comp_type: compType,
+        title, description, rules, comp_type: compType,
         start_date: new Date(startDate).toISOString(),
         end_date: new Date(endDate).toISOString(),
       };
-      if (compType === "qualifier" && topX) payload.top_x_advance = parseInt(topX);
-      if (compType === "finals" && linkedQualifier) payload.linked_qualifier = parseInt(linkedQualifier);
+      if (compType === 'qualifier' && topX) payload.top_x_advance = parseInt(topX);
+      if (compType === 'finals' && linkedQualifier) payload.linked_qualifier = parseInt(linkedQualifier);
 
       const res = await api.post(`/api/gyms/${gymId}/competitions/`, payload);
       const compId = res.data.id;
-
       await Promise.all([
-        ...divisions.map((name, i) =>
-          api.post(`/api/competitions/${compId}/divisions/`, { name })
-        ),
-        ...rounds.map((name, i) =>
-          api.post(`/api/competitions/${compId}/rounds/`, { name, order: i + 1 })
-        ),
+        ...divisions.map(name => api.post(`/api/competitions/${compId}/divisions/`, { name })),
+        ...rounds.map((name, i) => api.post(`/api/competitions/${compId}/rounds/`, { name, order: i + 1 })),
       ]);
-
       navigate(`/gym/${gymId}/competitions/${compId}`);
     } catch (err) {
       const data = err.response?.data;
       if (data) {
         const key = Object.keys(data)[0];
-        setError(data[key]?.[0] || "Failed to create competition.");
+        setError(data[key]?.[0] || 'Failed to create competition.');
       } else {
-        setError("Failed to create competition.");
+        setError('Failed to create competition.');
       }
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
+  const inputStyle = { width: '100%', background: P.card, border: `1px solid ${P.line}`, borderRadius: 11, padding: '11px 14px', fontFamily: P.body, fontSize: 14, color: P.ink, outline: 'none', boxSizing: 'border-box' };
+
   return (
-    <div className="min-h-screen bg-orange-50 font-serif">
-      <Navbar showBack backLabel="Competitions" backPath={`/gym/${gymId}/competitions`} />
-      <div className="max-w-xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold italic text-amber-900 mb-1">Create Competition</h1>
-        <p className="text-sm italic text-amber-700 mb-8">Set up your comp details.</p>
+    <PageShell back backLabel="Competitions" backPath={`/gym/${gymId}/competitions`} eyebrow="New competition" title="Create competition">
+      {error && (
+        <div style={{ background: 'rgba(187,91,70,.10)', border: '1px solid rgba(187,91,70,.25)', borderRadius: 12, padding: '10px 14px', marginBottom: 20, fontFamily: P.serif, fontStyle: 'italic', fontSize: 13.5, color: '#bb5b46' }}>
+          {error}
+        </div>
+      )}
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm italic px-4 py-3 rounded-lg mb-6">
-            {error}
-          </div>
-        )}
-
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         {/* Type selector */}
-        <div className="mb-6">
-          <p className="text-xs italic text-amber-800 mb-2">Competition type</p>
-          <div className="flex gap-3">
-            {["qualifier", "finals"].map(t => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setCompType(t)}
-                className={`flex-1 py-2 rounded-lg text-sm italic border transition-colors
-                  ${compType === t ? "bg-amber-900 text-amber-50 border-amber-900" : "border-amber-300 text-amber-800 hover:border-amber-500"}`}
-              >
-                {t === "qualifier" ? "Qualifier" : "Finals / World Cup"}
-              </button>
-            ))}
+        <div>
+          <Eyebrow style={{ marginBottom: 8, fontSize: 10 }}>Competition type</Eyebrow>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {[['qualifier', 'Qualifier'], ['finals', 'Finals / World Cup']].map(([k, lab]) => {
+              const sel = compType === k;
+              return (
+                <button key={k} type="button" onClick={() => setCompType(k)}
+                  style={{ flex: 1, fontFamily: P.body, fontWeight: 600, fontSize: 13, padding: '10px 8px', borderRadius: 11, cursor: 'pointer', border: `1px solid ${sel ? P.primary : P.line}`, background: sel ? P.primary : P.card, color: sel ? '#fff' : P.ink, transition: 'all .12s' }}>
+                  {lab}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Spring Open 2026" />
         <Field label="Description" value={description} onChange={setDescription} placeholder="Brief overview of the comp" textarea />
-        <Field label="Rules (optional)" value={rules} onChange={setRules} placeholder="Competition rules, format, scoring notes..." textarea />
+        <Field label="Rules" optional value={rules} onChange={setRules} placeholder="Format, scoring notes…" textarea />
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="text-xs italic text-amber-800 block mb-1">Start date & time</label>
-            <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif text-sm" />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontFamily: P.body, fontWeight: 700, fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.ink2, marginBottom: 6 }}>Starts</label>
+            <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} />
           </div>
-          <div>
-            <label className="text-xs italic text-amber-800 block mb-1">End date & time</label>
-            <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif text-sm" />
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontFamily: P.body, fontWeight: 700, fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.ink2, marginBottom: 6 }}>Ends</label>
+            <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} style={inputStyle} />
           </div>
         </div>
 
-        {compType === "qualifier" && (
-          <Field label="Top X advance to finals (optional)" value={topX} onChange={setTopX}
-            placeholder="e.g. 8" type="number" />
+        {compType === 'qualifier' && (
+          <Field label="Top X advance" optional value={topX} onChange={setTopX} placeholder="e.g. 20" type="number" />
         )}
-        {compType === "finals" && (
-          <Field label="Linked qualifier ID (optional)" value={linkedQualifier}
-            onChange={setLinkedQualifier} placeholder="Competition ID of the qualifier" type="number" />
+        {compType === 'finals' && (
+          <Field label="Linked qualifier ID" optional value={linkedQualifier} onChange={setLinkedQualifier} placeholder="Competition ID" type="number" />
         )}
 
         {/* Divisions */}
-        <div className="mb-6">
-          <p className="text-xs font-bold tracking-widest text-amber-700 mb-2">DIVISIONS</p>
+        <div>
+          <Eyebrow style={{ marginBottom: 10 }}>Divisions</Eyebrow>
           {divisions.map((d, i) => (
-            <div key={i} className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
-              <span className="text-sm italic text-amber-900">{d}</span>
-              <button type="button" onClick={() => setDivisions(divisions.filter((_, j) => j !== i))}
-                className="text-xs italic text-red-500 hover:text-red-700">Remove</button>
-            </div>
+            <Card key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', marginBottom: 8 }}>
+              <span style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink }}>{d}</span>
+              <button type="button" onClick={() => setDivisions(divisions.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: P.body, fontWeight: 600, fontSize: 12, color: '#bb5b46' }}>Remove</button>
+            </Card>
           ))}
-          <div className="flex gap-2">
-            <input type="text" placeholder="e.g. Open, Women's, Novice" value={newDivision}
-              onChange={e => setNewDivision(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && addDivision()}
-              className="flex-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif text-sm" />
-            <button type="button" onClick={addDivision}
-              className="px-4 py-2 rounded-lg border border-amber-300 text-amber-800 italic text-sm hover:border-amber-500">
-              Add
-            </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" placeholder="e.g. Open, Women's" value={newDivision} onChange={e => setNewDivision(e.target.value)} onKeyDown={e => e.key === 'Enter' && addDivision()} style={{ ...inputStyle, flex: 1 }} />
+            <Btn variant="ghost" onClick={addDivision}>Add</Btn>
           </div>
         </div>
 
         {/* Rounds */}
-        <div className="mb-8">
-          <p className="text-xs font-bold tracking-widest text-amber-700 mb-2">ROUNDS (optional)</p>
+        <div>
+          <Eyebrow style={{ marginBottom: 10 }}>Rounds · optional</Eyebrow>
           {rounds.map((r, i) => (
-            <div key={i} className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
-              <span className="text-sm italic text-amber-900">{i + 1}. {r}</span>
-              <button type="button" onClick={() => setRounds(rounds.filter((_, j) => j !== i))}
-                className="text-xs italic text-red-500 hover:text-red-700">Remove</button>
-            </div>
+            <Card key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', marginBottom: 8 }}>
+              <span style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink }}>{i + 1}. {r}</span>
+              <button type="button" onClick={() => setRounds(rounds.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: P.body, fontWeight: 600, fontSize: 12, color: '#bb5b46' }}>Remove</button>
+            </Card>
           ))}
-          <div className="flex gap-2">
-            <input type="text" placeholder="e.g. Qualifier, Semi-final, Final" value={newRound}
-              onChange={e => setNewRound(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && addRound()}
-              className="flex-1 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif text-sm" />
-            <button type="button" onClick={addRound}
-              className="px-4 py-2 rounded-lg border border-amber-300 text-amber-800 italic text-sm hover:border-amber-500">
-              Add
-            </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" placeholder="e.g. Semi-final, Final" value={newRound} onChange={e => setNewRound(e.target.value)} onKeyDown={e => e.key === 'Enter' && addRound()} style={{ ...inputStyle, flex: 1 }} />
+            <Btn variant="ghost" onClick={addRound}>Add</Btn>
           </div>
         </div>
 
-        <button type="button" onClick={handleSubmit} disabled={loading}
-          className="w-full py-3 rounded-xl bg-amber-900 text-amber-50 font-bold italic mb-3 disabled:opacity-50">
-          {loading ? "Creating…" : "Create Competition"}
-        </button>
-        <button type="button" onClick={() => navigate(`/gym/${gymId}/competitions`)}
-          className="w-full py-3 rounded-xl border border-amber-300 text-amber-700 italic">
-          Cancel
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+          <Btn full onClick={handleSubmit} disabled={loading}>{loading ? 'Creating…' : 'Create Competition'}</Btn>
+          <Btn full variant="ghost" onClick={() => navigate(`/gym/${gymId}/competitions`)}>Cancel</Btn>
+        </div>
       </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, placeholder, type = "text", textarea = false }) {
-  const cls = "w-full px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 font-serif text-sm";
-  return (
-    <div className="mb-4">
-      <label className="text-xs italic text-amber-800 block mb-1">{label}</label>
-      {textarea
-        ? <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-            className={`${cls} h-24 resize-none`} />
-        : <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-            className={cls} />}
-    </div>
+    </PageShell>
   );
 }
 
