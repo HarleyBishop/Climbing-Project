@@ -178,4 +178,25 @@ The Vite dev server proxies `/api` requests to `localhost:8000` so no CORS confi
 │   │   └── utils/           # rankUtils (rank tiers, points, SVG icons)
 │   └── public/              # PWA icons, static assets
 └── README.md
+
 ```
+
+## Still to Implement
+
+```
+
+- Find and implement free Cloud Storage for video sotrage rather then link uploads
+- Implement Videos to QR codes for intended Beta uploaded by Setters
+- Ensure Videos uploaded by setters are always at the top of climb videos section
+- Edit Profile and password reset need to be implemented
+- Slight updates like profile redirects on reviews
+- World leaderboards for highest point earners globally
+- Add climbing news tab to see IFSC competition scores aswell as recent news // Etiehr webscraping or manually audited and updated
+- Add following section to follow other users and see recent sends videos and reviews by them also a friends leaderboard
+- Email verification on register to avoid spam account creation
+- Qr Code additiont for comp registration
+- BIO addition to account information
+- Potential UI updates with graphs to show climb sends andusers thoughts on difficulty
+- Top gyms section with most popular gyms
+- Add Demo Account for Portfolio Viewing
+
