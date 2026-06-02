@@ -4,6 +4,7 @@ import api from "../api";
 import ClimbCard from "../components/ClimbDashboardComponents/ClimbCard";
 import Navbar from "../components/Navbar";
 import { isSetter } from "../auth";
+import { PageSkeleton } from "../components/Skeleton";
 
 function GymPage() {
   const { id } = useParams();
@@ -83,12 +84,7 @@ function GymPage() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center text-amber-800 italic">
-        Loading...
-      </div>
-    );
+  if (loading) return <PageSkeleton />;
 
   if (error)
     return (

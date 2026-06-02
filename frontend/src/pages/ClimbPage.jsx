@@ -3,6 +3,7 @@ import api from "../api";
 import { useParams, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import Navbar from "../components/Navbar";
+import { PageSkeleton } from "../components/Skeleton";
 
 // Maps the colour string stored in the DB to a hex value for the hero banner.
 // Kept local to ClimbPage since it's the only page that uses the full-colour
@@ -172,12 +173,7 @@ function ClimbPage() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center text-amber-800 italic">
-        Loading...
-      </div>
-    );
+  if (loading) return <PageSkeleton />;
 
   if (error)
     return (

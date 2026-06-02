@@ -4,6 +4,7 @@ import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import Navbar from "../components/Navbar";
 import { getRank, calculatePoints, RankBadge } from "../utils/rankUtils";
+import { PageSkeleton } from "../components/Skeleton";
 
 const COLOUR_MAP = {
   Green: "#4a8c5c",
@@ -75,12 +76,7 @@ function Profile() {
       ).sort((a, b) => b[1] - a[1])[0]?.[0]
     : null;
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center text-amber-800 italic">
-        Loading...
-      </div>
-    );
+  if (loading) return <PageSkeleton />;
 
   if (error)
     return (

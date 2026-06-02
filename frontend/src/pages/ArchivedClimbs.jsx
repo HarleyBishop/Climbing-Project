@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../api";
 import ClimbCard from "../components/ClimbDashboardComponents/ClimbCard";
 import Navbar from "../components/Navbar";
+import { PageSkeleton } from "../components/Skeleton";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-AU", {
@@ -42,12 +43,7 @@ function ArchivedClimbs() {
     fetchData();
   }, [gymId, wallId]);
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center text-amber-800 italic">
-        Loading...
-      </div>
-    );
+  if (loading) return <PageSkeleton />;
 
   if (error)
     return (

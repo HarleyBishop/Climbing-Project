@@ -3,15 +3,11 @@ import api from "../../api";
 import { useNavigate } from "react-router-dom";
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "../../constants";
 import { useGoogleLogin } from "@react-oauth/google";
+import toast from "react-hot-toast";
 
-// Shared form component for both login and register flows.
-// The `method` prop switches behaviour: "login" stores tokens and navigates
-// to home; "register" creates the account then redirects to /login.
 function LoginRegisterForm({route, method}) {
     const [username, setUsername] = useState("")
     const [password, setPassword] = useState("")
-    // isSetterRole is only sent on register — the backend sets is_verified_setter
-    // from this flag. It can't be changed via the API after registration.
     const [isSetterRole, setIsSetterRole] = useState(false)
     const [loading, setLoading] = useState("")
     const navigate = useNavigate()
@@ -26,12 +22,10 @@ function LoginRegisterForm({route, method}) {
     };
 
     const handleOAuthError = (err) => {
-        // 403 from the backend means the email matched a setter account —
-        // setters are blocked from OAuth to prevent role confusion.
         if (err?.response?.status === 403) {
-            alert("Setter accounts cannot use OAuth. Please log in with your username and password.");
+            toast.error("Setter accounts cannot use OAuth. Please log in with your username and password.");
         } else {
-            alert("OAuth sign-in failed. Please try again.");
+            toast.error("OAuth sign-in failed. Please try again.");
         }
     };
 
@@ -48,36 +42,31 @@ function LoginRegisterForm({route, method}) {
                 handleOAuthError(err);
             }
         },
-        onError: (err) => {
-            alert("Google sign-in failed. Please try again.");
+        onError: () => {
+            toast.error("Google sign-in failed. Please try again.");
         },
     });
 
-    const handleSubmit = async (e) =>
-    {
+    const handleSubmit = async (e) => {
         setLoading(true);
         e.preventDefault()
 
         try {
             const payload = { username, password }
-            // is_verified_setter is only included on register — the backend
-            // ignores it on the login endpoint.
             if (isRegister) payload.is_verified_setter = isSetterRole
 
             const res = await api.post(route, payload)
-            if(method === "login") {
+            if (method === "login") {
                 localStorage.setItem(ACCESS_TOKEN, res.data.access);
                 localStorage.setItem(REFRESH_TOKEN, res.data.refresh)
                 navigate("/")
-            }
-            else{
-                // After registration redirect to login — the user needs to
-                // authenticate to get a token, registration doesn't auto-login.
+            } else {
                 navigate("/login")
             }
-        }
-        catch(error){
-            alert(error)
+        } catch (error) {
+            const data = error?.response?.data;
+            const msg = data?.username?.[0] || data?.password?.[0] || data?.detail || "Something went wrong. Please try again.";
+            toast.error(msg);
         } finally {
             setLoading(false)
         }
@@ -100,8 +89,6 @@ function LoginRegisterForm({route, method}) {
         placeholder="password"
         />
 
-        {/* Role toggle only shown on register — two buttons act as a radio group.
-            The selected role is sent to the backend which sets is_verified_setter. */}
         {isRegister && (
             <div className="w-full mb-8">
                 <p className="text-xs italic text-amber-800 mb-2">I am registering as a…</p>
@@ -130,12 +117,10 @@ function LoginRegisterForm({route, method}) {
             </div>
         )}
 
-        <button className=" w-2/3 form-button outline-1 outline-amber-900 rounded-sm mb-3" type="submit">
-            {name}
+        <button className="w-2/3 form-button outline-1 outline-amber-900 rounded-sm mb-3" type="submit">
+            {loading ? "..." : name}
         </button>
 
-        {/* Switch link — shown below the submit button so users can easily
-            navigate between login and register without going back. */}
         {name === "Login" ? (
                 <p className="text-sm text-amber-800 italic text-center">
                     Don't have an account?{" "}
@@ -174,8 +159,6 @@ function LoginRegisterForm({route, method}) {
             </button>
         </div>
 
-        {/* OAuth accounts are always created as Climbers on the backend —
-            setters cannot bypass the manual registration flow via OAuth. */}
         {isRegister && (
             <p className="text-xs text-amber-600 italic text-center mt-4">
                 OAuth always creates a Climber account. Setters / Gym owners must register above.

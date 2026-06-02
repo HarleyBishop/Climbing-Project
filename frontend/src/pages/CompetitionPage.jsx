@@ -4,6 +4,8 @@ import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import Navbar from "../components/Navbar";
 import { isSetter, getDecodedToken } from "../auth";
+import { PageSkeleton } from "../components/Skeleton";
+import toast from "react-hot-toast";
 
 const STATUS_STYLE = {
   open:     "bg-green-100 text-green-800",
@@ -724,14 +726,13 @@ function CompetitionPage() {
       await fetchComp();
       await fetchRegistrations();
     } catch (err) {
-      alert(err.response?.data?.detail || "Registration failed.");
+      toast.error(err.response?.data?.detail || "Registration failed.");
     } finally {
       setRegistering(false);
     }
   };
 
-  if (loading)
-    return <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center text-amber-800 italic">Loading...</div>;
+  if (loading) return <PageSkeleton />;
 
   if (error || !comp)
     return (

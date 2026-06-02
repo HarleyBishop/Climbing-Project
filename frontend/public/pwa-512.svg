@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#78350f"/>
+  <!-- mountain peak -->
+  <polygon points="256,96 136,320 376,320" fill="#fef3c7"/>
+  <!-- snow cap -->
+  <polygon points="256,96 208,192 304,192" fill="white"/>
+  <!-- ground -->
+  <rect x="96" y="320" width="320" height="44" rx="10" fill="#fcd34d"/>
+</svg>

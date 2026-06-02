@@ -4,6 +4,7 @@ import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import Navbar from "../components/Navbar";
 import { getRank, RankBadge, RANKS, MAGNUS_RANK } from "../utils/rankUtils";
+import { PageSkeleton } from "../components/Skeleton";
 
 const GRADE_POINTS = [
   { label: "V0 – V2", min: 0, max: 2, points: 10 },
@@ -46,12 +47,7 @@ function Leaderboard() {
     fetchData();
   }, [gymId]);
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center text-amber-800 italic">
-        Loading...
-      </div>
-    );
+  if (loading) return <PageSkeleton />;
 
   if (error)
     return (

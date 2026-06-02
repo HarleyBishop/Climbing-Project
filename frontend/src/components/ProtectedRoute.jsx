@@ -3,6 +3,7 @@ import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import { REFRESH_TOKEN, ACCESS_TOKEN } from "../constants";
 import { useEffect, useState } from "react";
+import { PageSkeleton } from "./Skeleton";
 
 // Guards any route that requires authentication. On mount it checks whether
 // the stored access token is still valid. If it's expired it tries to silently
@@ -56,9 +57,7 @@ function ProtectedRoute({ children }) {
     }
   };
 
-  if (isAuthorized === null) {
-    return <div>Loading...</div>;
-  }
+  if (isAuthorized === null) return <PageSkeleton />;
 
   return isAuthorized ? children : <Navigate to="/login" />;
 }

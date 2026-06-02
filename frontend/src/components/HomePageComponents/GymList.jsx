@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../api";
 import GymCard from "./GymCard";
+import { CardSkeleton } from "../Skeleton";
 
 const GYM_COLOURS = [
   "bg-emerald-600",
@@ -52,7 +53,7 @@ function GymList() {
   const paginatedMyGyms = myGyms.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
   if (loading)
-    return <div className="text-amber-700 italic text-sm">Loading...</div>;
+    return <div className="flex flex-col"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>;
 
   if (error) return <div className="text-red-600 italic text-sm">{error}</div>;
 

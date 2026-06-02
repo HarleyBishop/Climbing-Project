@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../api";
 import Navbar from "../components/Navbar";
 import { isSetter } from "../auth";
+import { PageSkeleton } from "../components/Skeleton";
 
 const STATUS_STYLE = {
   open: "bg-green-100 text-green-800",
@@ -80,12 +81,7 @@ function CompetitionList() {
     fetchData();
   }, [gymId]);
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-orange-50 font-serif flex items-center justify-center text-amber-800 italic">
-        Loading...
-      </div>
-    );
+  if (loading) return <PageSkeleton />;
 
   if (error)
     return (
