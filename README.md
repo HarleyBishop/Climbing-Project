@@ -199,4 +199,4 @@ The Vite dev server proxies `/api` requests to `localhost:8000` so no CORS confi
 - Potential UI updates with graphs to show climb sends andusers thoughts on difficulty
 - Top gyms section with most popular gyms
 - Add Demo Account for Portfolio Viewing
-
+- Implement Tests and CI/CD on github
