@@ -11,7 +11,8 @@ import re
 import requests as http_requests
 from .serializers import (
     CustomTokenObtainPairSerializer,
-    UserSerializer, ClimbSerializer, WallSerializer, GymSerializer,
+    UserSerializer, UserProfileSerializer, ChangePasswordSerializer,
+    ClimbSerializer, WallSerializer, GymSerializer,
     GradeVoteSerializer, SendSerializer, ReviewSerializer, VideoSerializer,
     CompetitionSerializer, DivisionSerializer, CompRoundSerializer,
     CompClimbSerializer, CompRegistrationSerializer, CompSendSerializer, FinalsResultSerializer,
@@ -169,15 +170,44 @@ class CreateUserView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
 
-class UserDetailView(generics.RetrieveAPIView):
-    # Used by the profile page to get basic user info (username, date_joined).
+class UserDetailView(generics.RetrieveUpdateAPIView):
+    # GET: returns profile info for any authenticated user.
+    # PATCH: allows a user to update only their own bio.
     # lookup_url_kwarg maps the URL param 'user_id' to the model field 'id'
     # since the URL uses user_id but the default lookup_field is 'pk'.
-    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     queryset = User.objects.all()
     lookup_field = "id"
     lookup_url_kwarg = "user_id"
+    http_method_names = ['get', 'patch', 'head', 'options']
+
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return UserProfileSerializer
+        return UserSerializer
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.id != request.user.id:
+            return Response({'detail': 'You can only edit your own profile.'}, status=status.HTTP_403_FORBIDDEN)
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        if not request.user.check_password(serializer.validated_data['current_password']):
+            return Response({'detail': 'Current password is incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        request.user.set_password(serializer.validated_data['new_password'])
+        request.user.save()
+        return Response({'detail': 'Password changed successfully.'})
 
 
 # ─── Gym ─────────────────────────────────────────────────────────────────────

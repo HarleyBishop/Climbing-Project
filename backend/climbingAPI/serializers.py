@@ -28,7 +28,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'password', 'is_verified_setter', 'is_staff', 'date_joined']
+        fields = ['id', 'username', 'password', 'bio', 'is_verified_setter', 'is_staff', 'date_joined']
         read_only_fields = ['is_staff', 'date_joined']
         extra_kwargs = {
             # write_only ensures password is never returned in a response,
@@ -40,6 +40,19 @@ class UserSerializer(serializers.ModelSerializer):
         # create_user (not create) hashes the password before saving.
         # Calling plain .create() would store it in plaintext.
         return User.objects.create_user(**validated_data)
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Used for PATCH /api/users/{id}/ — only bio is writable."""
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'bio', 'is_verified_setter', 'is_staff', 'date_joined']
+        read_only_fields = ['id', 'username', 'is_verified_setter', 'is_staff', 'date_joined']
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
 
 
 class GymSerializer(serializers.ModelSerializer):

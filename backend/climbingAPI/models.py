@@ -13,6 +13,7 @@ class User(AbstractUser):
     # Nullable because most users won't have OAuth linked. unique=True prevents
     # two accounts accidentally sharing the same Google sub ID.
     google_id = models.CharField(max_length=200, blank=True, null=True, unique=True)
+    bio = models.TextField(blank=True, default='')
 
     def __str__(self):
         return self.username

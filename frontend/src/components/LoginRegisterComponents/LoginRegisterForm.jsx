@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import api from '../../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ACCESS_TOKEN, REFRESH_TOKEN } from '../../constants';
 import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
@@ -27,6 +27,8 @@ function LoginRegisterForm({ route, method }) {
   const [isSetterRole, setIsSetterRole] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = location.state?.from?.pathname || '/';
 
   const name = method === 'login' ? 'Login' : 'Register';
   const isRegister = method === 'register';
@@ -34,7 +36,7 @@ function LoginRegisterForm({ route, method }) {
   const handleOAuthSuccess = (tokens) => {
     localStorage.setItem(ACCESS_TOKEN, tokens.access);
     localStorage.setItem(REFRESH_TOKEN, tokens.refresh);
-    navigate('/');
+    navigate(redirectTo, { replace: true });
   };
 
   const handleOAuthError = (err) => {
@@ -69,7 +71,7 @@ function LoginRegisterForm({ route, method }) {
       if (method === 'login') {
         localStorage.setItem(ACCESS_TOKEN, res.data.access);
         localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
-        navigate('/');
+        navigate(redirectTo, { replace: true });
       } else {
         navigate('/login');
       }

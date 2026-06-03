@@ -50,6 +50,9 @@ urlpatterns = [
     path('users/<int:user_id>/sends/', views.UserSendsView.as_view(), name='user-sends'),
     path('users/<int:user_id>/reviews/', views.UserReviewsView.as_view(), name='user-reviews'),
     path('users/<int:user_id>/videos/', views.UserVideosView.as_view(), name='user-videos'),
+    # change-password is a dedicated action rather than part of the profile PATCH
+    # so that the bio update endpoint never touches auth credentials.
+    path('users/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
 
     # ─── Leaderboard ──────────────────────────────────────────────────────────
     path('gyms/<int:gym_id>/leaderboard/', views.GymLeaderboardView.as_view(), name='leaderboard'),

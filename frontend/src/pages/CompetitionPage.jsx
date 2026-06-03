@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import api from '../api';
@@ -8,6 +8,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import toast from 'react-hot-toast';
 import { useTheme, HOLD } from '../theme';
 import { Card, Chip, Btn, Eyebrow, Divider, Field, Modal, Tabs, Toggle } from '../components/ui/primitives';
+import { QRCodeSVG } from 'qrcode.react';
 
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -17,8 +18,32 @@ function fmtDateTime(iso) {
 }
 
 // ─── Info tab ────────────────────────────────────────────────────────────────
-function InfoTab({ comp, isRegistered, onRegister, registering }) {
+function InfoTab({ comp, isRegistered, onRegister, registering, isSetterUser, registrationUrl }) {
   const P = useTheme();
+  const [showQR, setShowQR] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const svgRef = useRef(null);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(registrationUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleDownload = () => {
+    const svg = svgRef.current?.querySelector('svg');
+    if (!svg) return;
+    const serialised = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([serialised], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${comp.title.replace(/\s+/g, '-').toLowerCase()}-qr.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
@@ -93,6 +118,42 @@ function InfoTab({ comp, isRegistered, onRegister, registering }) {
           </Btn>
         )}
       </div>
+
+      {/* Setter-only QR code section */}
+      {isSetterUser && (
+        <div style={{ marginTop: 24 }}>
+          <Divider m={0} />
+          <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontFamily: P.body, fontWeight: 700, fontSize: 12.5, color: P.ink, margin: 0 }}>Registration QR code</p>
+              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 12.5, color: P.ink3, margin: '2px 0 0' }}>Let climbers scan to jump straight to registration</p>
+            </div>
+            <Btn size="sm" variant="ghost" onClick={() => setShowQR(true)}>Show QR</Btn>
+          </div>
+        </div>
+      )}
+
+      {showQR && (
+        <Modal title="Registration QR code" subtitle={comp.title} onClose={() => setShowQR(false)}>
+          <div ref={svgRef} style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 20px' }}>
+            <QRCodeSVG
+              value={registrationUrl}
+              size={220}
+              bgColor="#ffffff"
+              fgColor="#2a2a1e"
+              level="M"
+              style={{ borderRadius: 12 }}
+            />
+          </div>
+          <p style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink3, textAlign: 'center', margin: '0 0 16px', wordBreak: 'break-all' }}>
+            {registrationUrl}
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Btn full onClick={handleCopy}>{copied ? 'Copied!' : 'Copy link'}</Btn>
+            <Btn full variant="ghost" onClick={handleDownload}>Save SVG</Btn>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -577,13 +638,14 @@ function CompetitionPage() {
   );
 
   const eyebrow = `${isQualifier ? 'Qualifier' : 'Finals'} · ${comp.status.charAt(0).toUpperCase() + comp.status.slice(1)}`;
+  const registrationUrl = `${window.location.origin}/gym/${gymId}/competitions/${compId}`;
 
   return (
     <PageShell back backLabel="Competitions" backPath={`/gym/${gymId}/competitions`} eyebrow={eyebrow} title={comp.title} right={headerRight}>
       <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'info' && (
-        <InfoTab comp={comp} isRegistered={comp.is_registered} onRegister={handleRegister} registering={registering} />
+        <InfoTab comp={comp} isRegistered={comp.is_registered} onRegister={handleRegister} registering={registering} isSetterUser={isSetterUser} registrationUrl={registrationUrl} />
       )}
       {activeTab === 'climbs' && (
         <ClimbsTab comp={comp} compClimbs={compClimbs} mySends={mySends} gymId={gymId} canEdit={isSetterUser} onSendLogged={fetchClimbs} onClimbRemoved={fetchClimbs} />

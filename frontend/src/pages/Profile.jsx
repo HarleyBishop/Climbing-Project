@@ -5,7 +5,7 @@ import api from '../api';
 import { PageShell } from '../components/ui/PageShell';
 import { PageSkeleton } from '../components/Skeleton';
 import { getRank, calculatePoints, RankBadge } from '../utils/rankUtils';
-import { Card, Chip, SectionLabel, Divider, Stars } from '../components/ui/primitives';
+import { Card, Chip, SectionLabel, Divider, Stars, Btn, Field, Modal } from '../components/ui/primitives';
 import { useTheme, HOLD } from '../theme';
 
 function Profile() {
@@ -16,6 +16,7 @@ function Profile() {
   const token = localStorage.getItem('access');
   const currentUserId = jwtDecode(token).user_id;
   const profileId = userId || currentUserId;
+  const isOwnProfile = parseInt(profileId) === currentUserId;
 
   const [profile, setProfile] = useState(null);
   const [sends, setSends] = useState([]);
@@ -23,6 +24,21 @@ function Profile() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Bio edit modal
+  const [showBioModal, setShowBioModal] = useState(false);
+  const [bioInput, setBioInput] = useState('');
+  const [bioError, setBioError] = useState(null);
+  const [bioSaving, setBioSaving] = useState(false);
+
+  // Password change modal
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -44,6 +60,32 @@ function Profile() {
     };
     fetchProfile();
   }, [profileId]);
+
+  const handleSaveBio = async () => {
+    setBioError(null);
+    setBioSaving(true);
+    try {
+      const res = await api.patch(`/api/users/${profileId}/`, { bio: bioInput });
+      setProfile(prev => ({ ...prev, bio: res.data.bio }));
+      setShowBioModal(false);
+    } catch { setBioError("Couldn't save your bio. Please try again."); }
+    finally { setBioSaving(false); }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    if (newPassword !== confirmPassword) { setPasswordError('New passwords do not match.'); return; }
+    if (newPassword.length < 8) { setPasswordError('New password must be at least 8 characters.'); return; }
+    setPasswordSaving(true);
+    try {
+      await api.post('/api/users/change-password/', { current_password: currentPassword, new_password: newPassword });
+      setPasswordSuccess(true);
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.response?.data?.current_password?.[0];
+      setPasswordError(detail || "Couldn't change password. Please try again.");
+    } finally { setPasswordSaving(false); }
+  };
 
   const totalPoints = calculatePoints(sends);
   const userRank = getRank(totalPoints);
@@ -68,8 +110,6 @@ function Profile() {
     </div>
   );
 
-  const isOwnProfile = parseInt(profileId) === currentUserId;
-
   const headerRight = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
       <RankBadge rank={userRank} />
@@ -82,6 +122,32 @@ function Profile() {
 
   return (
     <PageShell back backLabel="Back" eyebrow={isOwnProfile ? 'Your profile' : 'Profile'} title={`@${profile.username}`} right={headerRight} heroHeight={176}>
+
+      {/* Bio */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <SectionLabel style={{ margin: 0 }}>Bio</SectionLabel>
+          {isOwnProfile && (
+            <button
+              onClick={() => { setBioInput(profile.bio || ''); setBioError(null); setShowBioModal(true); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: P.body, fontWeight: 600, fontSize: 12, color: P.ink2, padding: 0 }}
+            >
+              {profile.bio ? 'Edit' : '+ Add bio'}
+            </button>
+          )}
+        </div>
+        {profile.bio ? (
+          <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 15.5, lineHeight: 1.5, color: P.ink, margin: 0 }}>
+            {profile.bio}
+          </p>
+        ) : (
+          <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, margin: 0 }}>
+            {isOwnProfile ? 'No bio yet. Add one to tell other climbers about yourself.' : 'No bio yet.'}
+          </p>
+        )}
+      </div>
+
+      <Divider />
 
       {/* Home gym */}
       {homeGym && (
@@ -152,7 +218,7 @@ function Profile() {
 
       {/* Videos */}
       <SectionLabel>Videos · {videos.length}</SectionLabel>
-      <div style={{ display: 'flex', gap: 11, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 11, flexWrap: 'wrap', marginBottom: isOwnProfile ? 32 : 0 }}>
         {videos.map(video => (
           <video key={video.id} width="180" height="120" controls style={{ borderRadius: 12, border: `1px solid ${P.line}` }}>
             <source src={video.video_url} type="video/mp4" />
@@ -160,6 +226,58 @@ function Profile() {
         ))}
         {videos.length === 0 && <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3 }}>No videos yet.</p>}
       </div>
+
+      {/* Account settings — own profile only */}
+      {isOwnProfile && (
+        <>
+          <Divider m={32} />
+          <SectionLabel>Account</SectionLabel>
+          <Card style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontFamily: P.body, fontWeight: 700, fontSize: 13, color: P.ink, margin: 0 }}>Password</p>
+              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, margin: '2px 0 0' }}>Change your login password</p>
+            </div>
+            <Btn size="sm" variant="ghost" onClick={() => { setPasswordError(null); setPasswordSuccess(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setShowPasswordModal(true); }}>
+              Change
+            </Btn>
+          </Card>
+        </>
+      )}
+
+      {/* Edit bio modal */}
+      {showBioModal && (
+        <Modal title="Edit bio" subtitle="Tell other climbers about yourself" onClose={() => setShowBioModal(false)}>
+          {bioError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 10 }}>{bioError}</p>}
+          <Field label="Bio" value={bioInput} onChange={setBioInput} placeholder="I've been climbing for 3 years…" textarea />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Btn full onClick={handleSaveBio} disabled={bioSaving}>{bioSaving ? 'Saving…' : 'Save'}</Btn>
+            <Btn full variant="ghost" onClick={() => setShowBioModal(false)}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
+
+      {/* Change password modal */}
+      {showPasswordModal && (
+        <Modal title="Change password" onClose={() => setShowPasswordModal(false)}>
+          {passwordError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 10 }}>{passwordError}</p>}
+          {passwordSuccess ? (
+            <div style={{ textAlign: 'center', padding: '12px 0' }}>
+              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 15, color: P.good || '#4a7c59', marginBottom: 16 }}>Password changed successfully.</p>
+              <Btn full onClick={() => setShowPasswordModal(false)}>Done</Btn>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Field label="Current password" value={currentPassword} onChange={setCurrentPassword} type="password" placeholder="Your current password" />
+              <Field label="New password" value={newPassword} onChange={setNewPassword} type="password" placeholder="At least 8 characters" />
+              <Field label="Confirm new password" value={confirmPassword} onChange={setConfirmPassword} type="password" placeholder="Repeat new password" />
+              <div style={{ display: 'flex', gap: 10 }}>
+                <Btn full onClick={handleChangePassword} disabled={passwordSaving}>{passwordSaving ? 'Saving…' : 'Change password'}</Btn>
+                <Btn full variant="ghost" onClick={() => setShowPasswordModal(false)}>Cancel</Btn>
+              </div>
+            </div>
+          )}
+        </Modal>
+      )}
     </PageShell>
   );
 }
