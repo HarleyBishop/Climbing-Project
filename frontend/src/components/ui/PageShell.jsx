@@ -127,7 +127,7 @@ export function AuthScaffold({ headline, headlineItalic, children }) {
         <div style={{ position: 'relative', maxWidth: 480, margin: '0 auto', padding: '22px 24px 30px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontFamily: P.disp, fontSize: 20, color: P.skyText, letterSpacing: 0.3 }}>Beta Board</span>
-            <span style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.skyText, opacity: .85 }}>est. 2025</span>
+            <span style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.skyText, opacity: .85 }}>est. 2026</span>
           </div>
           <div style={{ margin: '20px 0 0', borderRadius: 18, overflow: 'hidden', border: '4px solid rgba(255,255,255,.7)', boxShadow: '0 14px 32px rgba(40,40,30,.28)' }}>
             <img src="/LoginRegisterImage.jpg" alt="climbing" style={{ width: '100%', height: 146, objectFit: 'cover', display: 'block' }} />

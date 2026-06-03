@@ -81,10 +81,11 @@ class ClimbSerializer(serializers.ModelSerializer):
     # Denormalising wall_name here avoids a second request from the frontend
     # just to display which wall a climb is on.
     wall_name = serializers.CharField(source='wall.name', read_only=True)
+    added_by_username = serializers.CharField(source='added_by.username', read_only=True)
 
     class Meta:
         model = Climb
-        fields = ["id", "name", "colour", "image_url", "suggested_grade", "community_grade", "is_archived", "set_at", "wall", "wall_name", "added_by"]
+        fields = ["id", "name", "colour", "image_url", "suggested_grade", "community_grade", "is_archived", "set_at", "wall", "wall_name", "added_by", "added_by_username"]
         read_only_fields = ['wall', 'added_by']
 
 

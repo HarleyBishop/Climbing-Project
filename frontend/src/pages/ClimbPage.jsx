@@ -139,7 +139,12 @@ function ClimbPage() {
             </p>
             <h1 style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 34, lineHeight: 1, margin: 0, color: '#fff', textShadow: '0 2px 14px rgba(0,0,0,.22)' }}>{climb.name}</h1>
             <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14.5, color: 'rgba(255,255,255,.92)', margin: '8px 0 0' }}>
-              Set by @{climb.added_by} · {new Date(climb.set_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+              Set by{' '}
+              <button onClick={() => navigate(`/profile/${climb.added_by}`)}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: P.serif, fontStyle: 'italic', fontSize: 14.5, color: 'rgba(255,255,255,.92)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                @{climb.added_by_username}
+              </button>
+              {' · '}{new Date(climb.set_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
             </p>
           </div>
         </div>
@@ -212,8 +217,11 @@ function ClimbPage() {
               <div key={rv.id} style={{ borderBottom: i < reviews.length - 1 ? `1px solid ${P.line}` : 'none', paddingBottom: i < reviews.length - 1 ? 18 : 0 }}>
                 <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 16.5, lineHeight: 1.4, color: P.ink, margin: 0 }}>"{rv.comment}"</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 11 }}>
-                  <Avatar name={rv.username} size={26} />
-                  <span style={{ fontFamily: P.body, fontWeight: 600, fontSize: 12.5, color: P.ink }}>@{rv.username}</span>
+                  <button onClick={() => navigate(`/profile/${rv.user}`)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                    <Avatar name={rv.username} size={26} />
+                    <span style={{ fontFamily: P.body, fontWeight: 600, fontSize: 12.5, color: P.ink }}>@{rv.username}</span>
+                  </button>
                   <Stars n={rv.stars} />
                   <span style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink2, marginLeft: 'auto' }}>{rv.attempts} attempts</span>
                 </div>

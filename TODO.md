@@ -26,20 +26,8 @@ Django has this built in — just needs wiring up with an email backend.
 
 ## 🟡 Medium Priority
 
-### UI review with Claude
-Feed screenshots of each page into claude.ai and ask for specific layout/visual feedback.
-Pages most worth reviewing: Home, ClimbPage, Profile, Leaderboard.
-Focus areas: spacing consistency, mobile layout, colour contrast, empty states.
 
-### Filter + sort climbs on gym page
-Currently all climbs on a wall are shown in creation order with no filtering.
-Adding grade range filter and colour filter would make large walls much more navigable.
-Sort by: newest, grade (easy→hard, hard→easy), most sends.
 
-### Grade progression chart on profile
-The profile shows average grade as a single number. A simple line chart (recharts or
-chart.js) showing average grade over time would make the portfolio aspect much stronger —
-it demonstrates both data visualisation skills and meaningful product thinking.
 
 ### Image upload instead of URL
 Climbs and videos currently accept URLs only. A real upload (Cloudinary free tier or
