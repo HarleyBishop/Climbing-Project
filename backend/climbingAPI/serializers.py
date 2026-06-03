@@ -114,6 +114,7 @@ class SendSerializer(serializers.ModelSerializer):
     # These fields traverse FK relationships (send → climb → wall → gym) to
     # give the profile page everything it needs in a single response. Without
     # them the frontend would need one extra request per send to get climb info.
+    username = serializers.CharField(source='user.username', read_only=True)
     climb_name = serializers.CharField(source='climb.name', read_only=True)
     climb_colour = serializers.CharField(source='climb.colour', read_only=True)
     climb_grade = serializers.IntegerField(source='climb.suggested_grade', read_only=True)
@@ -132,7 +133,7 @@ class SendSerializer(serializers.ModelSerializer):
         model = Send
         fields = [
             "id", "attempts", "sent_at",
-            "climb", "user",
+            "climb", "user", "username",
             "climb_id", "climb_name", "climb_colour", "climb_grade", "climb_is_archived",
             "wall_id", "wall_name",
             "gym_id", "gym_name",

@@ -3,27 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import { PageShell } from '../ui/PageShell';
 import { Btn, Field, Eyebrow, Card, Toggle, ColourSwatches } from '../ui/primitives';
-import { useTheme, HOLD } from '../../theme';
+import { HOLD } from '../../theme';
 
-// WallRow — a confirmed wall shown in the walls list before submission.
 function WallRow({ wall, onRemove }) {
-  const P = useTheme();
   const hex = HOLD[wall.colour] || '#cd6f3f';
   return (
     <Card style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', marginBottom: 9 }}>
-      <span style={{ width: 11, height: 11, borderRadius: '50%', background: hex, flexShrink: 0 }} />
-      <div style={{ flex: 1 }}>
-        <p style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 16, margin: 0, color: P.ink }}>{wall.name}</p>
-        {wall.description && <p style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink2, margin: '2px 0 0' }}>{wall.description}</p>}
+      <span className="w-[11px] h-[11px] rounded-full shrink-0" style={{ background: hex }} />
+      <div className="flex-1">
+        <p className="font-display font-normal text-base m-0 text-ink">{wall.name}</p>
+        {wall.description && <p className="font-body text-[11.5px] text-ink2 mt-[2px] mb-0">{wall.description}</p>}
       </div>
-      <button onClick={() => onRemove(wall.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: P.body, fontWeight: 600, fontSize: 12, color: '#bb5b46' }}>Remove</button>
+      <button onClick={() => onRemove(wall.id)} className="bg-transparent border-0 cursor-pointer font-body font-semibold text-xs text-danger">Remove</button>
     </Card>
   );
 }
 
-// AddWallForm — inline form for building new walls before the gym is saved.
 function AddWallForm({ onAddWall }) {
-  const P = useTheme();
   const [wallName, setWallName] = useState('');
   const [wallDescription, setWallDescription] = useState('');
   const [selectedColour, setSelectedColour] = useState('Green');
@@ -36,7 +32,7 @@ function AddWallForm({ onAddWall }) {
 
   return (
     <Card style={{ padding: '14px 15px', marginTop: 3 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+      <div className="flex flex-col gap-[13px]">
         <Field label="Wall name" value={wallName} onChange={setWallName} placeholder="e.g. Overhang" style={{ marginBottom: 0 }} />
         <Field label="Description" optional value={wallDescription} onChange={setWallDescription} placeholder="Short description…" style={{ marginBottom: 0 }} />
         <div>
@@ -50,7 +46,6 @@ function AddWallForm({ onAddWall }) {
 }
 
 function CreateGymForm() {
-  const P = useTheme();
   const [gymName, setGymName] = useState('');
   const [location, setLocation] = useState('');
   const [lat, setLat] = useState('');
@@ -91,37 +86,37 @@ function CreateGymForm() {
     } finally { setLoading(false); }
   };
 
+  const inputClass = 'w-full bg-card border border-line rounded-[11px] px-[14px] py-[11px] font-body text-[13.5px] text-ink outline-none box-border';
+
   return (
     <PageShell back backLabel="Back" backPath="/" eyebrow="New gym" title="Set up your gym">
       {error && (
-        <div style={{ background: 'rgba(187,91,70,.10)', border: '1px solid rgba(187,91,70,.25)', borderRadius: 12, padding: '10px 14px', marginBottom: 20, fontFamily: P.serif, fontStyle: 'italic', fontSize: 13.5, color: '#bb5b46' }}>
+        <div className="rounded-[12px] px-[14px] py-[10px] mb-5 font-serif italic text-[13.5px] text-danger" style={{ background: 'rgba(187,91,70,.10)', border: '1px solid rgba(187,91,70,.25)' }}>
           {error}
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="flex flex-col gap-[18px]">
         <Field label="Gym name" value={gymName} onChange={setGymName} placeholder="e.g. Boulder HQ" />
         <Field label="Location" value={location} onChange={setLocation} placeholder="e.g. 12 Forge St, Newstead" />
 
         <div>
           <Eyebrow style={{ marginBottom: 8, fontSize: 10 }}>Map coordinates · optional</Eyebrow>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <input type="number" step="any" placeholder="Latitude e.g. -27.47" value={lat} onChange={e => setLat(e.target.value)}
-                style={{ width: '100%', background: P.card, border: `1px solid ${P.line}`, borderRadius: 11, padding: '11px 14px', fontFamily: P.body, fontSize: 13.5, color: P.ink, outline: 'none', boxSizing: 'border-box' }} />
+          <div className="flex gap-[10px]">
+            <div className="flex-1">
+              <input type="number" step="any" placeholder="Latitude e.g. -27.47" value={lat} onChange={e => setLat(e.target.value)} className={inputClass} />
             </div>
-            <div style={{ flex: 1 }}>
-              <input type="number" step="any" placeholder="Longitude e.g. 153.02" value={lng} onChange={e => setLng(e.target.value)}
-                style={{ width: '100%', background: P.card, border: `1px solid ${P.line}`, borderRadius: 11, padding: '11px 14px', fontFamily: P.body, fontSize: 13.5, color: P.ink, outline: 'none', boxSizing: 'border-box' }} />
+            <div className="flex-1">
+              <input type="number" step="any" placeholder="Longitude e.g. 153.02" value={lng} onChange={e => setLng(e.target.value)} className={inputClass} />
             </div>
           </div>
-          <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 12.5, color: P.ink3, margin: '6px 0 0' }}>
+          <p className="font-serif italic text-[12.5px] text-ink3 mt-[6px] mb-0">
             Right-click on Google Maps and copy the coordinates.
           </p>
         </div>
 
         <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 15px' }}>
-          <span style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14.5, color: P.ink }}>
+          <span className="font-serif italic text-[14.5px] text-ink">
             {isActive ? 'Gym is currently open' : 'Gym is currently closed'}
           </span>
           <Toggle on={isActive} onChange={setIsActive} />
@@ -129,14 +124,14 @@ function CreateGymForm() {
 
         <div>
           <Eyebrow style={{ marginBottom: 6 }}>Walls</Eyebrow>
-          <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, margin: '0 0 12px' }}>
+          <p className="font-serif italic text-[13px] text-ink3 m-0 mb-3">
             Add the walls in your gym so setters can assign climbs.
           </p>
           {walls.map(w => <WallRow key={w.id} wall={w} onRemove={removeWall} />)}
           <AddWallForm onAddWall={addWall} />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+        <div className="flex flex-col gap-[10px] mt-1">
           <Btn full onClick={handleSubmit} disabled={loading}>{loading ? 'Creating gym…' : 'Create gym'}</Btn>
           <Btn full variant="ghost" onClick={() => navigate('/')}>Cancel</Btn>
         </div>

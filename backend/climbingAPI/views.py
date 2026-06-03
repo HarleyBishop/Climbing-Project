@@ -20,6 +20,7 @@ from .serializers import (
 from .models import (
     Climb, Wall, Gym, GradeVote, Send, Review, Video,
     Competition, Division, CompRound, CompClimb, CompRegistration, CompSend, FinalsResult,
+    Follow,
 )
 
 User = get_user_model()
@@ -186,12 +187,104 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
             return UserProfileSerializer
         return UserSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = dict(serializer.data)
+        data['follower_count'] = instance.followers.count()
+        data['following_count'] = instance.following.count()
+        data['is_following'] = Follow.objects.filter(
+            follower=request.user, following=instance
+        ).exists()
+        return Response(data)
+
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
         if instance.id != request.user.id:
             return Response({'detail': 'You can only edit your own profile.'}, status=status.HTTP_403_FORBIDDEN)
         kwargs['partial'] = True
         return super().update(request, *args, **kwargs)
+
+
+class FollowView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        target = get_object_or_404(User, id=user_id)
+        if target == request.user:
+            return Response({'detail': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+        Follow.objects.get_or_create(follower=request.user, following=target)
+        return Response({'detail': 'Followed.'})
+
+    def delete(self, request, user_id):
+        target = get_object_or_404(User, id=user_id)
+        Follow.objects.filter(follower=request.user, following=target).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ActivityFeedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        following_ids = list(
+            Follow.objects.filter(follower=request.user).values_list('following_id', flat=True)
+        )
+        if not following_ids:
+            return Response([])
+
+        sends = (
+            Send.objects
+            .filter(user_id__in=following_ids)
+            .select_related('user', 'climb', 'climb__wall', 'climb__wall__gym')
+            .order_by('-sent_at')[:60]
+        )
+        reviews = (
+            Review.objects
+            .filter(user_id__in=following_ids)
+            .select_related('user', 'climb', 'climb__wall', 'climb__wall__gym')
+            .order_by('-created_at')[:60]
+        )
+
+        feed = []
+        for s in sends:
+            feed.append({
+                'type': 'send',
+                'id': s.id,
+                'user_id': s.user.id,
+                'username': s.user.username,
+                'timestamp': s.sent_at,
+                'climb_id': s.climb.id,
+                'climb_name': s.climb.name,
+                'climb_colour': s.climb.colour,
+                'climb_grade': s.climb.suggested_grade,
+                'wall_id': s.climb.wall.id,
+                'wall_name': s.climb.wall.name,
+                'gym_id': s.climb.wall.gym.id,
+                'gym_name': s.climb.wall.gym.name,
+                'attempts': s.attempts,
+            })
+        for r in reviews:
+            feed.append({
+                'type': 'review',
+                'id': r.id,
+                'user_id': r.user.id,
+                'username': r.user.username,
+                'timestamp': r.created_at,
+                'climb_id': r.climb.id,
+                'climb_name': r.climb.name,
+                'climb_colour': r.climb.colour,
+                'climb_grade': r.climb.suggested_grade,
+                'wall_id': r.climb.wall.id,
+                'wall_name': r.climb.wall.name,
+                'gym_id': r.climb.wall.gym.id,
+                'gym_name': r.climb.wall.gym.name,
+                'attempts': r.attempts,
+                'comment': r.comment,
+                'stars': r.stars,
+            })
+
+        feed.sort(key=lambda x: x['timestamp'], reverse=True)
+        return Response(feed[:50])
 
 
 class ChangePasswordView(APIView):

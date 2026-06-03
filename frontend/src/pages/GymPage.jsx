@@ -4,12 +4,10 @@ import api from '../api';
 import ClimbCard from '../components/ClimbDashboardComponents/ClimbCard';
 import { PageShell } from '../components/ui/PageShell';
 import { PageSkeleton } from '../components/Skeleton';
-import { Btn, Chip, Eyebrow, Card } from '../components/ui/primitives';
+import { Btn, Chip, Eyebrow, Card, ErrorScreen } from '../components/ui/primitives';
 import { isSetter } from '../auth';
-import { useTheme } from '../theme';
 
 function GymPage() {
-  const P = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -66,28 +64,26 @@ function GymPage() {
   };
 
   if (loading) return <PageSkeleton />;
-
-  if (error) return (
-    <div style={{ minHeight: '100vh', background: '#fbf5e6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center', padding: '0 24px' }}>
-        <p style={{ fontFamily: '"Newsreader", serif', fontStyle: 'italic', color: '#bb5b46', fontSize: 14, marginBottom: 16 }}>{error}</p>
-        <button onClick={() => window.location.reload()} style={{ fontFamily: '"Mulish", sans-serif', fontWeight: 700, fontSize: 13.5, padding: '10px 20px', borderRadius: 12, background: '#cf6f49', color: '#fff', border: 'none', cursor: 'pointer' }}>Retry</button>
-      </div>
-    </div>
-  );
+  if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
 
   const headerRight = (
-    <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+    <div className="mt-[14px] flex items-center gap-2 flex-wrap">
       <Chip tone={gym.is_active ? 'open' : 'closed'} style={{ background: 'rgba(255,255,255,.5)' }}>
         {gym.is_active ? 'Open' : 'Closed'}
       </Chip>
-      <div style={{ flex: 1 }} />
-      <button onClick={() => navigate(`/gym/${id}/competitions`)}
-        style={{ fontFamily: P.body, fontWeight: 600, fontSize: 12, padding: '6px 13px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(58,67,41,.28)', background: 'rgba(255,255,255,.45)', color: P.skyText }}>
+      <div className="flex-1" />
+      <button
+        onClick={() => navigate(`/gym/${id}/competitions`)}
+        className="font-body font-semibold text-xs px-[13px] py-[6px] rounded-full cursor-pointer text-sky-text bg-white/45"
+        style={{ border: 'var(--pill-border)' }}
+      >
         Competitions
       </button>
-      <button onClick={() => navigate(`/gym/${id}/leaderboard`)}
-        style={{ fontFamily: P.body, fontWeight: 600, fontSize: 12, padding: '6px 13px', borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(58,67,41,.28)', background: 'rgba(255,255,255,.45)', color: P.skyText }}>
+      <button
+        onClick={() => navigate(`/gym/${id}/leaderboard`)}
+        className="font-body font-semibold text-xs px-[13px] py-[6px] rounded-full cursor-pointer text-sky-text bg-white/45"
+        style={{ border: 'var(--pill-border)' }}
+      >
         Leaderboard
       </button>
     </div>
@@ -98,15 +94,20 @@ function GymPage() {
 
       <Eyebrow style={{ marginBottom: 10 }}>Select wall</Eyebrow>
       {walls.length === 0 ? (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, marginBottom: 24 }}>No walls set up yet.</p>
+        <p className="font-serif italic text-sm text-ink3 mb-6">No walls set up yet.</p>
       ) : (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div className="flex gap-2 flex-wrap mb-5">
           {walls.map(w => {
             const sel = selectedWall?.id === w.id;
             return (
-              <button key={w.id} type="button"
+              <button
+                key={w.id}
+                type="button"
                 onClick={() => { setSelectedWall(w); setArchiveConfirm(false); }}
-                style={{ fontFamily: P.body, fontWeight: 600, fontSize: 13, padding: '7px 15px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${sel ? P.primary : P.line}`, background: sel ? P.primary : P.card, color: sel ? '#fff' : P.ink, transition: 'all .12s' }}>
+                className={`font-body font-semibold text-[13px] px-[15px] py-[7px] rounded-full cursor-pointer border transition-all duration-[120ms] ${
+                  sel ? 'border-primary bg-primary text-white' : 'border-line bg-card text-ink'
+                }`}
+              >
                 {w.name}
               </button>
             );
@@ -115,11 +116,13 @@ function GymPage() {
       )}
 
       {selectedWall && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+        <div className="flex items-center justify-between mb-[14px] gap-[10px]">
+          <div className="flex items-baseline gap-[10px] min-w-0">
             <Eyebrow>{selectedWall.name} · {climbsLoading ? '…' : `${climbs.length} climbs`}</Eyebrow>
-            <button onClick={() => navigate(`/gym/${id}/wall/${selectedWall.id}/archived`)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, padding: 0 }}>
+            <button
+              onClick={() => navigate(`/gym/${id}/wall/${selectedWall.id}/archived`)}
+              className="bg-transparent border-0 cursor-pointer font-serif italic text-[13px] text-ink3 p-0"
+            >
               View archived
             </button>
           </div>
@@ -128,10 +131,10 @@ function GymPage() {
       )}
 
       {canEdit && selectedWall && (
-        <div style={{ marginBottom: 18 }}>
+        <div className="mb-[18px]">
           {archiveConfirm ? (
-            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderColor: P.primary }}>
-              <p style={{ flex: 1, fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink, margin: 0 }}>
+            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderColor: 'var(--primary)' }}>
+              <p className="flex-1 font-serif italic text-[13px] text-ink m-0">
                 Archive all {climbs.length} climbs on {selectedWall.name}? This can't be undone.
               </p>
               <Btn size="sm" variant="danger" onClick={handleArchiveWall} disabled={archiving}>
@@ -140,8 +143,13 @@ function GymPage() {
               <Btn size="sm" variant="ghost" onClick={() => setArchiveConfirm(false)}>Cancel</Btn>
             </Card>
           ) : (
-            <button type="button" onClick={() => setArchiveConfirm(true)} disabled={climbs.length === 0}
-              style={{ background: 'none', border: 'none', cursor: climbs.length === 0 ? 'default' : 'pointer', fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, padding: 0, opacity: climbs.length === 0 ? .3 : 1 }}>
+            <button
+              type="button"
+              onClick={() => setArchiveConfirm(true)}
+              disabled={climbs.length === 0}
+              className="bg-transparent border-0 font-serif italic text-[13px] text-ink3 p-0"
+              style={{ cursor: climbs.length === 0 ? 'default' : 'pointer', opacity: climbs.length === 0 ? .3 : 1 }}
+            >
               Archive all climbs on this wall
             </button>
           )}
@@ -149,9 +157,9 @@ function GymPage() {
       )}
 
       {climbsLoading ? (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3 }}>Loading climbs…</p>
+        <p className="font-serif italic text-sm text-ink3">Loading climbs…</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 13 }}>
+        <div className="grid grid-cols-2 gap-[13px]">
           {climbs.map(climb => (
             <ClimbCard key={climb.id} climb={climb} gymId={id} wallId={selectedWall?.id} />
           ))}
@@ -159,7 +167,7 @@ function GymPage() {
       )}
 
       {!climbsLoading && climbs.length === 0 && selectedWall && (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, textAlign: 'center', padding: '40px 0' }}>
+        <p className="font-serif italic text-sm text-ink3 text-center py-10">
           {canEdit ? 'No climbs on this wall yet — add one above.' : 'No climbs on this wall yet.'}
         </p>
       )}

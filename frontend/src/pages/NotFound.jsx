@@ -8,12 +8,12 @@ function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', background: P.sheet, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="min-h-screen relative bg-sheet flex flex-col items-center justify-center">
       <Sky stars={P.key === 'dusk'} />
-      <div style={{ position: 'relative', textAlign: 'center', padding: '0 30px' }}>
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 64, margin: 0, color: P.skyText, opacity: .9, lineHeight: 1 }}>404</p>
-        <h1 style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 30, margin: '12px 0 0', color: P.skyText }}>Lost the beta?</h1>
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 16, color: P.skyText, opacity: .85, margin: '8px 0 24px' }}>
+      <div className="relative text-center px-[30px]">
+        <p className="font-serif italic text-[64px] m-0 text-sky-text opacity-90 leading-none">404</p>
+        <h1 className="font-display font-normal text-[30px] mt-3 mb-0 text-sky-text">Lost the beta?</h1>
+        <p className="font-serif italic text-base text-sky-text opacity-85 mt-2 mb-6">
           This route doesn't exist on the wall.
         </p>
         <Btn onClick={() => navigate('/')}>Back to your gyms</Btn>

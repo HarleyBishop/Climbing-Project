@@ -15,6 +15,7 @@ import ArchivedClimbs from "./pages/ArchivedClimbs";
 import CompetitionList from "./pages/CompetitionList";
 import CompetitionPage from "./pages/CompetitionPage";
 import CreateCompetition from "./pages/CreateCompetition";
+import Feed from "./pages/Feed";
 import { isSetter } from "./auth";
 
 // Inline route guard for setter-only pages. Reads the JWT claim rather than
@@ -135,6 +136,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Leaderboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/feed"
+          element={
+            <ProtectedRoute>
+              <Feed />
             </ProtectedRoute>
           }
         />

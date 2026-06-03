@@ -3,14 +3,13 @@ import api from '../api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { PageSkeleton } from '../components/Skeleton';
-import { useTheme, HOLD, GRAIN } from '../theme';
-import { Card, Btn, Eyebrow, Divider, SectionLabel, GradePills, Stars, Modal, Field, Avatar } from '../components/ui/primitives';
+import { HOLD, GRAIN } from '../theme';
+import { Card, Btn, Eyebrow, Divider, SectionLabel, GradePills, Stars, Modal, Field, Avatar, ErrorScreen } from '../components/ui/primitives';
 import { getDecodedToken } from '../auth';
 
 const GRADES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 function ClimbPage() {
-  const P = useTheme();
   const [climb, setClimb] = useState();
   const [gradeVote, setGradeVote] = useState([]);
   const [sends, setSends] = useState([]);
@@ -106,42 +105,39 @@ function ClimbPage() {
   };
 
   if (loading) return <PageSkeleton />;
-
-  if (error) return (
-    <div style={{ minHeight: '100vh', background: P.sheet, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center', padding: '0 24px' }}>
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 14, marginBottom: 16 }}>{error}</p>
-        <Btn onClick={() => window.location.reload()}>Retry</Btn>
-      </div>
-    </div>
-  );
+  if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
 
   const hold = HOLD[climb.colour] || '#cd6f3f';
 
   return (
-    <div style={{ minHeight: '100vh', background: P.sheet }}>
+    <div className="min-h-screen bg-sheet">
       {/* Full-bleed colour hero using the climb's hold colour */}
-      <div style={{ position: 'relative', minHeight: 192, overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(165deg, ${hold} 0%, ${hold} 55%, rgba(0,0,0,.18) 130%)` }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(90% 70% at 75% 12%, rgba(255,255,255,.3), transparent 60%)' }} />
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: GRAIN, backgroundSize: '160px 160px', opacity: 0.13, mixBlendMode: 'soft-light' }} />
-        <div style={{ position: 'relative', maxWidth: 640, margin: '0 auto', padding: '16px 20px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button onClick={() => navigate(`/gym/${gymId}`)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: P.body, fontWeight: 600, fontSize: 13.5, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 17 }}>‹</span> {climb.wall_name}
+      <div className="relative overflow-hidden" style={{ minHeight: 192 }}>
+        <div className="absolute inset-0" style={{ background: `linear-gradient(165deg, ${hold} 0%, ${hold} 55%, rgba(0,0,0,.18) 130%)` }} />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(90% 70% at 75% 12%, rgba(255,255,255,.3), transparent 60%)' }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: GRAIN, backgroundSize: '160px 160px', opacity: 0.13, mixBlendMode: 'soft-light' }} />
+        <div className="relative max-w-[640px] mx-auto px-5 pt-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate(`/gym/${gymId}`)}
+              className="bg-transparent border-0 cursor-pointer font-body font-semibold text-[13.5px] text-white inline-flex items-center gap-1"
+            >
+              <span className="text-[17px]">‹</span> {climb.wall_name}
             </button>
             <Avatar name={username} size={30} onClick={() => navigate('/profile')} />
           </div>
-          <div style={{ marginTop: 30, paddingBottom: 30 }}>
-            <p style={{ fontFamily: P.body, fontWeight: 700, fontSize: 10.5, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,.85)', margin: '0 0 7px' }}>
+          <div className="mt-[30px] pb-[30px]">
+            <p className="font-body font-bold text-[10.5px] tracking-[0.16em] uppercase m-0 mb-[7px]" style={{ color: 'rgba(255,255,255,.85)' }}>
               {climb.colour} hold · {climb.wall_name}
             </p>
-            <h1 style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 34, lineHeight: 1, margin: 0, color: '#fff', textShadow: '0 2px 14px rgba(0,0,0,.22)' }}>{climb.name}</h1>
-            <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14.5, color: 'rgba(255,255,255,.92)', margin: '8px 0 0' }}>
+            <h1 className="font-display font-normal text-[34px] leading-none m-0 text-white" style={{ textShadow: '0 2px 14px rgba(0,0,0,.22)' }}>{climb.name}</h1>
+            <p className="font-serif italic text-[14.5px] mt-2 mb-0" style={{ color: 'rgba(255,255,255,.92)' }}>
               Set by{' '}
-              <button onClick={() => navigate(`/profile/${climb.added_by}`)}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: P.serif, fontStyle: 'italic', fontSize: 14.5, color: 'rgba(255,255,255,.92)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              <button
+                onClick={() => navigate(`/profile/${climb.added_by}`)}
+                className="bg-transparent border-0 p-0 cursor-pointer font-serif italic text-[14.5px] underline underline-offset-[3px]"
+                style={{ color: 'rgba(255,255,255,.92)' }}
+              >
                 @{climb.added_by_username}
               </button>
               {' · '}{new Date(climb.set_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
@@ -151,45 +147,45 @@ function ClimbPage() {
       </div>
 
       {/* Cream sheet */}
-      <div style={{ position: 'relative', marginTop: -20, background: P.sheet, borderRadius: '22px 22px 0 0', boxShadow: '0 -8px 24px rgba(40,40,30,.10)' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '20px 20px 40px' }}>
+      <div className="relative -mt-5 bg-sheet rounded-[22px_22px_0_0] shadow-[0_-8px_24px_rgba(40,40,30,.10)]">
+        <div className="max-w-[640px] mx-auto px-5 pt-5 pb-10">
 
           {/* Stats row */}
-          <div style={{ display: 'flex', border: `1px solid ${P.line}`, borderRadius: 14, background: P.card, padding: '14px 0', marginBottom: 16 }}>
+          <div className="flex border border-line rounded-[14px] bg-card px-0 py-[14px] mb-4">
             {[
               { v: `V${climb.suggested_grade}`, l: 'Setter' },
               { v: climb.community_grade ? `V${climb.community_grade}` : '—', l: 'Community' },
               { v: sends.length, l: 'Sends' },
               { v: reviews.length, l: 'Reviews' },
             ].map((s, i) => (
-              <div key={s.l} style={{ flex: 1, textAlign: 'center', borderRight: i < 3 ? `1px solid ${P.line}` : 'none', padding: '0 4px' }}>
-                <p style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 23, margin: 0, color: P.ink, lineHeight: 1 }}>{s.v}</p>
-                <p style={{ fontFamily: P.body, fontWeight: 600, fontSize: 9.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.ink2, margin: '5px 0 0' }}>{s.l}</p>
+              <div key={s.l} className="flex-1 text-center px-1" style={{ borderRight: i < 3 ? '1px solid var(--line)' : 'none' }}>
+                <p className="font-display font-normal text-[23px] m-0 text-ink leading-none">{s.v}</p>
+                <p className="font-body font-semibold text-[9.5px] tracking-[0.08em] uppercase text-ink2 mt-[5px] mb-0">{s.l}</p>
               </div>
             ))}
           </div>
 
           {/* Send strip */}
           {mySend ? (
-            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', background: P.goodBg, borderColor: 'transparent', marginBottom: 16 }}>
-              <span style={{ color: P.good, fontSize: 17 }}>✓</span>
-              <p style={{ flex: 1, fontFamily: P.serif, fontStyle: 'italic', fontSize: 14.5, color: P.good, margin: 0 }}>
-                You sent this! <strong style={{ fontStyle: 'normal', fontFamily: P.body, fontWeight: 700 }}>{mySend.attempts} attempts</strong>
+            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', background: 'var(--good-bg)', borderColor: 'transparent', marginBottom: 16 }}>
+              <span className="text-good text-[17px]">✓</span>
+              <p className="flex-1 font-serif italic text-[14.5px] text-good m-0">
+                You sent this! <strong className="not-italic font-body font-bold">{mySend.attempts} attempts</strong>
               </p>
               <Btn size="sm" variant="ghost" onClick={() => setShowSendModal(true)}>Edit</Btn>
             </Card>
           ) : (
             <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', marginBottom: 16 }}>
-              <p style={{ flex: 1, fontFamily: P.serif, fontStyle: 'italic', fontSize: 15, color: P.ink, margin: 0 }}>Logged your send yet?</p>
+              <p className="flex-1 font-serif italic text-[15px] text-ink m-0">Logged your send yet?</p>
               <Btn size="sm" onClick={() => setShowSendModal(true)}>Log send</Btn>
             </Card>
           )}
 
           {/* Grade vote */}
           <SectionLabel style={{ margin: '24px 0 10px' }}>Vote the grade</SectionLabel>
-          {voteError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, margin: '0 0 8px' }}>{voteError}</p>}
+          {voteError && <p className="font-serif italic text-danger text-[13px] m-0 mb-2">{voteError}</p>}
           <GradePills grades={GRADES} value={myVote?.grade ?? null} onPick={handleVote} />
-          <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, margin: '10px 0 0' }}>
+          <p className="font-serif italic text-[13px] text-ink3 mt-[10px] mb-0">
             {myVote !== undefined ? `You voted V${myVote.grade}. Community sits at V${climb.community_grade || climb.suggested_grade}.` : 'Tap a grade to add your vote.'}
           </p>
 
@@ -197,14 +193,14 @@ function ClimbPage() {
 
           {/* Videos */}
           <SectionLabel>Beta videos · {videos.length}</SectionLabel>
-          <div style={{ display: 'flex', gap: 11, flexWrap: 'wrap', marginBottom: 24 }}>
+          <div className="flex gap-[11px] flex-wrap mb-6">
             {videos.map(video => (
-              <video key={video.id} width="180" height="120" controls style={{ borderRadius: 12, border: `1px solid ${P.line}` }}>
+              <video key={video.id} width="180" height="120" controls className="rounded-[12px] border border-line">
                 <source src={video.video_url} type="video/mp4" />
               </video>
             ))}
             {videos.length === 0 && (
-              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3 }}>No videos yet.</p>
+              <p className="font-serif italic text-sm text-ink3">No videos yet.</p>
             )}
           </div>
 
@@ -212,54 +208,54 @@ function ClimbPage() {
 
           {/* Reviews */}
           <SectionLabel style={{ margin: '24px 0 12px' }}>Reviews · {reviews.length}</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginBottom: 20 }}>
+          <div className="flex flex-col gap-[18px] mb-5">
             {reviews.map((rv, i) => (
-              <div key={rv.id} style={{ borderBottom: i < reviews.length - 1 ? `1px solid ${P.line}` : 'none', paddingBottom: i < reviews.length - 1 ? 18 : 0 }}>
-                <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 16.5, lineHeight: 1.4, color: P.ink, margin: 0 }}>"{rv.comment}"</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 11 }}>
-                  <button onClick={() => navigate(`/profile/${rv.user}`)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+              <div key={rv.id} style={{ borderBottom: i < reviews.length - 1 ? '1px solid var(--line)' : 'none', paddingBottom: i < reviews.length - 1 ? 18 : 0 }}>
+                <p className="font-serif italic text-[16.5px] leading-[1.4] text-ink m-0">"{rv.comment}"</p>
+                <div className="flex items-center gap-[9px] mt-[11px]">
+                  <button
+                    onClick={() => navigate(`/profile/${rv.user}`)}
+                    className="flex items-center gap-[9px] bg-transparent border-0 p-0 cursor-pointer"
+                  >
                     <Avatar name={rv.username} size={26} />
-                    <span style={{ fontFamily: P.body, fontWeight: 600, fontSize: 12.5, color: P.ink }}>@{rv.username}</span>
+                    <span className="font-body font-semibold text-[12.5px] text-ink">@{rv.username}</span>
                   </button>
                   <Stars n={rv.stars} />
-                  <span style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink2, marginLeft: 'auto' }}>{rv.attempts} attempts</span>
+                  <span className="font-body text-[11.5px] text-ink2 ml-auto">{rv.attempts} attempts</span>
                 </div>
               </div>
             ))}
             {reviews.length === 0 && (
-              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3 }}>No reviews yet.</p>
+              <p className="font-serif italic text-sm text-ink3">No reviews yet.</p>
             )}
           </div>
           <Btn full variant="ghost" onClick={() => setShowReviewModal(true)}>+ Write a review</Btn>
         </div>
       </div>
 
-      {/* Log send modal */}
       {showSendModal && (
         <Modal title="Log your send" subtitle="How many attempts did it take?" onClose={() => { setShowSendModal(false); setSendError(null); }}>
-          {sendError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 10 }}>{sendError}</p>}
+          {sendError && <p className="font-serif italic text-danger text-[13px] mb-[10px]">{sendError}</p>}
           <Field label="Attempts" value={attempts} onChange={setAttempts} placeholder="e.g. 5" type="number" />
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="flex gap-[10px]">
             <Btn full onClick={handleLogSend}>Log send</Btn>
             <Btn full variant="ghost" onClick={() => { setShowSendModal(false); setSendError(null); }}>Cancel</Btn>
           </div>
         </Modal>
       )}
 
-      {/* Write review modal */}
       {showReviewModal && (
         <Modal title="Write a review" subtitle="Share your beta on this climb" onClose={() => { setShowReviewModal(false); setReviewError(null); }}>
-          {reviewError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 10 }}>{reviewError}</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {reviewError && <p className="font-serif italic text-danger text-[13px] mb-[10px]">{reviewError}</p>}
+          <div className="flex flex-col gap-[14px]">
             <Field label="Comment" value={comment} onChange={setComment} placeholder="What did you think?" textarea />
             <div>
-              <p style={{ fontFamily: P.body, fontWeight: 700, fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.ink2, marginBottom: 8 }}>Stars</p>
+              <p className="font-body font-bold text-[10px] tracking-[0.14em] uppercase text-ink2 mb-2">Stars</p>
               <Stars n={stars} size={26} onPick={setStars} />
             </div>
             <Field label="Attempts" value={reviewAttempts} onChange={setReviewAttempts} placeholder="e.g. 3" type="number" />
             <Field label="Video URL" optional value={videoUrl} onChange={setVideoUrl} placeholder="https://…" />
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div className="flex gap-[10px]">
               <Btn full onClick={handleReview}>Submit</Btn>
               <Btn full variant="ghost" onClick={() => { setShowReviewModal(false); setReviewError(null); }}>Cancel</Btn>
             </div>

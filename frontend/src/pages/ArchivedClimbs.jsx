@@ -4,10 +4,9 @@ import api from '../api';
 import ClimbCard from '../components/ClimbDashboardComponents/ClimbCard';
 import { PageShell } from '../components/ui/PageShell';
 import { PageSkeleton } from '../components/Skeleton';
-import { useTheme } from '../theme';
+import { ErrorScreen } from '../components/ui/primitives';
 
 function ArchivedClimbs() {
-  const P = useTheme();
   const { gymId, wallId } = useParams();
 
   const [climbs, setClimbs] = useState([]);
@@ -34,15 +33,7 @@ function ArchivedClimbs() {
   }, [gymId, wallId]);
 
   if (loading) return <PageSkeleton />;
-
-  if (error) return (
-    <div style={{ minHeight: '100vh', background: P.sheet, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center', padding: '0 24px' }}>
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 14, marginBottom: 16 }}>{error}</p>
-        <button onClick={() => window.location.reload()} style={{ fontFamily: P.body, fontWeight: 700, fontSize: 13.5, padding: '10px 20px', borderRadius: 12, background: P.primary, color: '#fff', border: 'none', cursor: 'pointer' }}>Retry</button>
-      </div>
-    </div>
-  );
+  if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
 
   return (
     <PageShell
@@ -51,11 +42,11 @@ function ArchivedClimbs() {
       title="Archived climbs"
     >
       {climbs.length === 0 ? (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, textAlign: 'center', padding: '48px 0' }}>
+        <p className="font-serif italic text-sm text-ink3 text-center py-12">
           No archived climbs on this wall yet.
         </p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 13 }}>
+        <div className="grid grid-cols-2 gap-[13px]">
           {climbs.map(climb => (
             <ClimbCard key={climb.id} climb={climb} gymId={gymId} wallId={wallId} setLabel />
           ))}

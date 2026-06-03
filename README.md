@@ -186,12 +186,11 @@ The Vite dev server proxies `/api` requests to `localhost:8000` so no CORS confi
 ```
 
 - Find and implement free Cloud Storage for video sotrage rather then link uploads
-- Implement Videos to QR codes for intended Beta uploaded by Setters
 - Ensure Videos uploaded by setters are always at the top of climb videos section
 - World leaderboards for highest point earners globally
 - Add climbing news tab to see IFSC competition scores aswell as recent news // Etiehr webscraping or manually audited and updated
 - Add following section to follow other users and see recent sends videos and reviews by them also a friends leaderboard
-- Email verification on register to avoid spam account creation
+- Email verification on register to avoid sp1am account creation
 
 - Potential UI updates with graphs to show climb sends andusers thoughts on difficulty
 - Add Demo Account for Portfolio Viewing

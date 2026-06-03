@@ -6,8 +6,8 @@ import { PageShell } from '../components/ui/PageShell';
 import { isSetter, getDecodedToken } from '../auth';
 import { PageSkeleton } from '../components/Skeleton';
 import toast from 'react-hot-toast';
-import { useTheme, HOLD } from '../theme';
-import { Card, Chip, Btn, Eyebrow, Divider, Field, Modal, Tabs, Toggle } from '../components/ui/primitives';
+import { HOLD } from '../theme';
+import { Card, Chip, Btn, Eyebrow, Divider, Field, Modal, Tabs, Toggle, ErrorScreen } from '../components/ui/primitives';
 import { QRCodeSVG } from 'qrcode.react';
 
 function fmtDate(iso) {
@@ -19,7 +19,6 @@ function fmtDateTime(iso) {
 
 // ─── Info tab ────────────────────────────────────────────────────────────────
 function InfoTab({ comp, isRegistered, onRegister, registering, isSetterUser, registrationUrl }) {
-  const P = useTheme();
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
   const svgRef = useRef(null);
@@ -46,57 +45,57 @@ function InfoTab({ comp, isRegistered, onRegister, registering, isSetterUser, re
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+      <div className="grid grid-cols-2 gap-[10px] mb-[18px]">
         {[
           { l: 'Opens', v: fmtDateTime(comp.start_date) },
           { l: 'Closes', v: fmtDateTime(comp.end_date) },
           { l: 'Registered', v: comp.registration_count },
           { l: 'Type', v: comp.comp_type === 'qualifier' ? 'Qualifier' : 'Finals' },
         ].map(s => (
-          <div key={s.l} style={{ background: P.card, border: `1px solid ${P.line}`, borderRadius: 12, padding: '12px 14px', textAlign: 'center' }}>
-            <p style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 17, margin: 0, color: P.ink }}>{s.v}</p>
-            <p style={{ fontFamily: P.body, fontWeight: 600, fontSize: 9.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.ink2, margin: '4px 0 0' }}>{s.l}</p>
+          <div key={s.l} className="bg-card border border-line rounded-[12px] px-[14px] py-3 text-center">
+            <p className="font-display font-normal text-[17px] m-0 text-ink">{s.v}</p>
+            <p className="font-body font-semibold text-[9.5px] tracking-[0.08em] uppercase text-ink2 mt-1 mb-0">{s.l}</p>
           </div>
         ))}
       </div>
 
       {comp.top_x_advance && (
-        <div style={{ background: P.infoBg, borderRadius: 12, padding: '11px 14px', marginBottom: 18, fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.info }}>
+        <div className="bg-info-bg rounded-[12px] px-[14px] py-[11px] mb-[18px] font-serif italic text-sm text-info">
           Top {comp.top_x_advance} climbers advance to finals.
         </div>
       )}
 
       {comp.description && (
-        <div style={{ marginBottom: 18 }}>
+        <div className="mb-[18px]">
           <Eyebrow style={{ marginBottom: 8 }}>About</Eyebrow>
-          <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 15, lineHeight: 1.5, color: P.ink, margin: 0 }}>{comp.description}</p>
+          <p className="font-serif italic text-[15px] leading-[1.5] text-ink m-0">{comp.description}</p>
         </div>
       )}
 
       {comp.rules && (
-        <div style={{ marginBottom: 18 }}>
+        <div className="mb-[18px]">
           <Eyebrow style={{ marginBottom: 8 }}>Rules</Eyebrow>
-          <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, lineHeight: 1.6, color: P.ink, margin: 0, whiteSpace: 'pre-line' }}>{comp.rules}</p>
+          <p className="font-serif italic text-sm leading-[1.6] text-ink m-0 whitespace-pre-line">{comp.rules}</p>
         </div>
       )}
 
       {comp.divisions?.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
+        <div className="mb-[18px]">
           <Eyebrow style={{ marginBottom: 10 }}>Divisions</Eyebrow>
-          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+          <div className="flex gap-[7px] flex-wrap">
             {comp.divisions.map(d => <Chip key={d.id} tone="soft">{d.name}</Chip>)}
           </div>
         </div>
       )}
 
       {comp.rounds?.length > 0 && (
-        <div style={{ marginBottom: 22 }}>
+        <div className="mb-[22px]">
           <Eyebrow style={{ marginBottom: 10 }}>Rounds</Eyebrow>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="flex flex-col gap-2">
             {comp.rounds.map((r, i) => (
-              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(207,111,73,.12)', color: '#b85b39', fontFamily: 'Mulish,sans-serif', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
-                <span style={{ fontFamily: 'Newsreader,serif', fontStyle: 'italic', fontSize: 14.5 }}>{r.name}</span>
+              <div key={r.id} className="flex items-center gap-[10px]">
+                <span className="w-[22px] h-[22px] rounded-full bg-primary-soft text-primary-d font-body font-bold text-[11px] flex items-center justify-center shrink-0">{i + 1}</span>
+                <span className="font-serif italic text-[14.5px]">{r.name}</span>
               </div>
             ))}
           </div>
@@ -104,13 +103,13 @@ function InfoTab({ comp, isRegistered, onRegister, registering, isSetterUser, re
       )}
 
       <Divider m={6} />
-      <div style={{ marginTop: 18 }}>
+      <div className="mt-[18px]">
         {comp.status === 'closed' ? (
-          <p style={{ fontFamily: 'Newsreader,serif', fontStyle: 'italic', fontSize: 14, color: '#9aa389', textAlign: 'center', padding: '16px 0' }}>This competition has ended.</p>
+          <p className="font-serif italic text-sm text-ink3 text-center py-4">This competition has ended.</p>
         ) : isRegistered ? (
-          <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', background: 'rgba(126,155,92,.16)', borderColor: 'transparent' }}>
-            <span style={{ color: '#5e7a44', fontSize: 17 }}>✓</span>
-            <p style={{ flex: 1, fontFamily: 'Newsreader,serif', fontStyle: 'italic', fontSize: 14, color: '#5e7a44', margin: 0 }}>You're registered — head to Climbs to log your sends.</p>
+          <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', background: 'var(--good-bg)', borderColor: 'transparent' }}>
+            <span className="text-good text-[17px]">✓</span>
+            <p className="flex-1 font-serif italic text-sm text-good m-0">You're registered — head to Climbs to log your sends.</p>
           </Card>
         ) : (
           <Btn full onClick={onRegister} disabled={registering}>
@@ -119,14 +118,13 @@ function InfoTab({ comp, isRegistered, onRegister, registering, isSetterUser, re
         )}
       </div>
 
-      {/* Setter-only QR code section */}
       {isSetterUser && (
-        <div style={{ marginTop: 24 }}>
+        <div className="mt-6">
           <Divider m={0} />
-          <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="mt-[18px] flex items-center justify-between">
             <div>
-              <p style={{ fontFamily: P.body, fontWeight: 700, fontSize: 12.5, color: P.ink, margin: 0 }}>Registration QR code</p>
-              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 12.5, color: P.ink3, margin: '2px 0 0' }}>Let climbers scan to jump straight to registration</p>
+              <p className="font-body font-bold text-[12.5px] text-ink m-0">Registration QR code</p>
+              <p className="font-serif italic text-[12.5px] text-ink3 mt-[2px] mb-0">Let climbers scan to jump straight to registration</p>
             </div>
             <Btn size="sm" variant="ghost" onClick={() => setShowQR(true)}>Show QR</Btn>
           </div>
@@ -135,20 +133,11 @@ function InfoTab({ comp, isRegistered, onRegister, registering, isSetterUser, re
 
       {showQR && (
         <Modal title="Registration QR code" subtitle={comp.title} onClose={() => setShowQR(false)}>
-          <div ref={svgRef} style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 20px' }}>
-            <QRCodeSVG
-              value={registrationUrl}
-              size={220}
-              bgColor="#ffffff"
-              fgColor="#2a2a1e"
-              level="M"
-              style={{ borderRadius: 12 }}
-            />
+          <div ref={svgRef} className="flex justify-center py-2 pb-5">
+            <QRCodeSVG value={registrationUrl} size={220} bgColor="#ffffff" fgColor="#2a2a1e" level="M" style={{ borderRadius: 12 }} />
           </div>
-          <p style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink3, textAlign: 'center', margin: '0 0 16px', wordBreak: 'break-all' }}>
-            {registrationUrl}
-          </p>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <p className="font-body text-[11.5px] text-ink3 text-center m-0 mb-4 break-all">{registrationUrl}</p>
+          <div className="flex gap-[10px]">
             <Btn full onClick={handleCopy}>{copied ? 'Copied!' : 'Copy link'}</Btn>
             <Btn full variant="ghost" onClick={handleDownload}>Save SVG</Btn>
           </div>
@@ -160,7 +149,6 @@ function InfoTab({ comp, isRegistered, onRegister, registering, isSetterUser, re
 
 // ─── Climbs tab ──────────────────────────────────────────────────────────────
 function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, onClimbRemoved }) {
-  const P = useTheme();
   const [showAddModal, setShowAddModal] = useState(false);
   const [gymClimbs, setGymClimbs] = useState([]);
   const [addSearch, setAddSearch] = useState('');
@@ -235,26 +223,26 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
   return (
     <div>
       {canEdit && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+        <div className="flex justify-end mb-[14px]">
           <Btn size="sm" onClick={openAddModal}>+ Add climb</Btn>
         </div>
       )}
 
       {compClimbs.length === 0 ? (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, textAlign: 'center', padding: '48px 0' }}>No climbs added yet.</p>
+        <p className="font-serif italic text-sm text-ink3 text-center py-12">No climbs added yet.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+        <div className="flex flex-col gap-[11px]">
           {compClimbs.map(cc => {
             const colour = HOLD[cc.climb_colour] || '#cd6f3f';
             const mySend = mySendMap[cc.id];
             return (
               <Card key={cc.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 13px' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: colour, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: P.body, fontWeight: 700, fontSize: 12.5, color: '#fff' }}>
+                <div className="w-10 h-10 rounded-[10px] shrink-0 flex items-center justify-center font-body font-bold text-[12.5px] text-white" style={{ background: colour }}>
                   V{cc.climb_grade}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 16, margin: 0, color: P.ink, lineHeight: 1.1 }}>{cc.climb_name}</p>
-                  <p style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink2, margin: '3px 0 0' }}>{cc.wall_name} · {cc.points_value} pts</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-display font-normal text-base m-0 text-ink leading-[1.1]">{cc.climb_name}</p>
+                  <p className="font-body text-[11.5px] text-ink2 mt-[3px] mb-0">{cc.wall_name} · {cc.points_value} pts</p>
                 </div>
                 {mySend ? (
                   <Chip tone="open">✓ {mySend.attempts} att.</Chip>
@@ -262,7 +250,7 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
                   <Btn size="sm" onClick={() => { setLogModal(cc); setLogAttempts(''); setLogError(null); }}>Log send</Btn>
                 ) : null}
                 {canEdit && (
-                  <button onClick={() => handleRemove(cc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: P.ink3, marginLeft: 4 }}>✕</button>
+                  <button onClick={() => handleRemove(cc.id)} className="bg-transparent border-0 cursor-pointer text-[15px] text-ink3 ml-1">✕</button>
                 )}
               </Card>
             );
@@ -271,16 +259,16 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
       )}
 
       {!comp.is_registered && comp.status === 'open' && (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 13, color: P.ink3, textAlign: 'center', marginTop: 16 }}>
+        <p className="font-serif italic text-[13px] text-ink3 text-center mt-4">
           Register on the Info tab to log your sends.
         </p>
       )}
 
       {logModal && (
         <Modal title="Log comp send" subtitle={`${logModal.climb_name} · ${logModal.points_value} pts`} onClose={() => setLogModal(null)}>
-          {logError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 10 }}>{logError}</p>}
+          {logError && <p className="font-serif italic text-danger text-[13px] mb-[10px]">{logError}</p>}
           <Field label="Attempts" value={logAttempts} onChange={setLogAttempts} placeholder="e.g. 3" type="number" />
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="flex gap-[10px]">
             <Btn full onClick={handleLogSend} disabled={logging}>{logging ? 'Saving…' : 'Save'}</Btn>
             <Btn full variant="ghost" onClick={() => setLogModal(null)}>Cancel</Btn>
           </div>
@@ -289,32 +277,40 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
 
       {showAddModal && (
         <Modal title="Add climb" subtitle="Pick a climb from the gym" onClose={() => setShowAddModal(false)}>
-          {addError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 10 }}>{addError}</p>}
+          {addError && <p className="font-serif italic text-danger text-[13px] mb-[10px]">{addError}</p>}
           {pendingAdd ? (
             <div>
-              <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, marginBottom: 14 }}>
+              <p className="font-serif italic text-sm mb-[14px]">
                 Adding <strong>{pendingAdd.name}</strong> (V{pendingAdd.suggested_grade})
               </p>
               <Field label="Points value" value={String(pendingPoints)} onChange={v => setPendingPoints(parseInt(v) || 100)} type="number" />
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div className="flex gap-[10px]">
                 <Btn full onClick={handleAdd} disabled={adding}>{adding ? 'Adding…' : 'Confirm'}</Btn>
                 <Btn full variant="ghost" onClick={() => setPendingAdd(null)}>Back</Btn>
               </div>
             </div>
           ) : (
             <>
-              <input type="text" placeholder="Search climbs…" value={addSearch} onChange={e => setAddSearch(e.target.value)}
-                style={{ width: '100%', background: P.card, border: `1px solid ${P.line}`, borderRadius: 11, padding: '10px 14px', fontFamily: P.body, fontSize: 14, color: P.ink, outline: 'none', boxSizing: 'border-box', marginBottom: 12 }} />
+              <input
+                type="text"
+                placeholder="Search climbs…"
+                value={addSearch}
+                onChange={e => setAddSearch(e.target.value)}
+                className="w-full bg-card border border-line rounded-[11px] px-[14px] py-[10px] font-body text-sm text-ink outline-none box-border mb-3"
+              />
               <div style={{ maxHeight: 240, overflowY: 'auto' }}>
                 {filtered.length === 0 ? (
-                  <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, textAlign: 'center', padding: '16px 0' }}>No climbs available.</p>
+                  <p className="font-serif italic text-sm text-ink3 text-center py-4">No climbs available.</p>
                 ) : filtered.map(c => (
-                  <div key={c.id} onClick={() => setPendingAdd(c)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 4px', borderRadius: 10, cursor: 'pointer', marginBottom: 4 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: HOLD[c.colour] || '#cd6f3f', flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: P.disp, fontSize: 15, margin: 0, color: P.ink }}>{c.name}</p>
-                      <p style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink2, margin: '2px 0 0' }}>{c.wall_name} · V{c.suggested_grade}</p>
+                  <div
+                    key={c.id}
+                    onClick={() => setPendingAdd(c)}
+                    className="flex items-center gap-3 px-1 py-[9px] rounded-[10px] cursor-pointer mb-1"
+                  >
+                    <div className="w-8 h-8 rounded-2 shrink-0 rounded-lg" style={{ background: HOLD[c.colour] || '#cd6f3f' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display text-[15px] m-0 text-ink">{c.name}</p>
+                      <p className="font-body text-[11.5px] text-ink2 mt-[2px] mb-0">{c.wall_name} · V{c.suggested_grade}</p>
                     </div>
                   </div>
                 ))}
@@ -329,7 +325,6 @@ function ClimbsTab({ comp, compClimbs, mySends, gymId, canEdit, onSendLogged, on
 
 // ─── Qualifier leaderboard ────────────────────────────────────────────────────
 function QualifierLeaderboard({ compId, currentUserId }) {
-  const P = useTheme();
   const navigate = useNavigate();
   const [rankings, setRankings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -347,37 +342,41 @@ function QualifierLeaderboard({ compId, currentUserId }) {
     return () => clearInterval(id);
   }, [fetch]);
 
-  const rankColour = (n, P) => n === 1 ? P.primary : n === 2 ? P.ink2 : n === 3 ? P.accent : P.ink3;
+  const rankColour = (n) => n === 1 ? 'var(--primary)' : n === 2 ? 'var(--ink2)' : n === 3 ? 'var(--accent)' : 'var(--ink3)';
   const maxPts = rankings[0]?.points || 1;
 
-  if (loading) return <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: P.ink3, fontSize: 14, textAlign: 'center', padding: '32px 0' }}>Loading…</p>;
-  if (rankings.length === 0) return <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: P.ink3, fontSize: 14, textAlign: 'center', padding: '32px 0' }}>No sends logged yet.</p>;
+  if (loading) return <p className="font-serif italic text-ink3 text-sm text-center py-8">Loading…</p>;
+  if (rankings.length === 0) return <p className="font-serif italic text-ink3 text-sm text-center py-8">No sends logged yet.</p>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+    <div className="flex flex-col gap-[9px]">
       {rankings.map(entry => {
         const isMe = entry.user_id === currentUserId;
         const bar = Math.round((entry.points / maxPts) * 100);
         return (
-          <Card key={entry.user_id} hover onClick={() => navigate(`/profile/${entry.user_id}`)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', border: isMe ? `2px solid ${P.primary}` : `1px solid ${P.line}` }}>
-            <span style={{ fontFamily: P.disp, fontSize: 18, color: rankColour(entry.rank, P), minWidth: 22, textAlign: 'center' }}>{entry.rank}</span>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: P.lineSoft, border: `1px solid ${P.line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: P.body, fontWeight: 700, fontSize: 11, color: P.ink, flexShrink: 0 }}>
+          <Card
+            key={entry.user_id}
+            hover
+            onClick={() => navigate(`/profile/${entry.user_id}`)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', border: isMe ? `2px solid var(--primary)` : `1px solid var(--line)` }}
+          >
+            <span className="font-display text-lg min-w-[22px] text-center" style={{ color: rankColour(entry.rank) }}>{entry.rank}</span>
+            <div className="w-[30px] h-[30px] rounded-full bg-line-soft border border-line flex items-center justify-center font-body font-bold text-[11px] text-ink shrink-0">
               {entry.username?.slice(0, 2).toUpperCase()}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
-                <span style={{ fontFamily: P.body, fontWeight: 700, fontSize: 13, color: P.ink }}>@{entry.username}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-[7px] mb-[6px]">
+                <span className="font-body font-bold text-[13px] text-ink">@{entry.username}</span>
                 {isMe && <Chip tone="you">You</Chip>}
                 {entry.advances && <Chip tone="advances">Advances</Chip>}
               </div>
-              <div style={{ height: 6, background: P.lineSoft, borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${bar}%`, background: P.primary, borderRadius: 999 }} />
+              <div className="h-[6px] bg-line-soft rounded-full overflow-hidden">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${bar}%` }} />
               </div>
             </div>
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <p style={{ fontFamily: P.body, fontWeight: 700, fontSize: 12.5, color: P.ink, margin: 0 }}>{entry.points} pts</p>
-              <p style={{ fontFamily: P.body, fontSize: 10.5, color: P.ink2, margin: '2px 0 0' }}>{entry.climbs_completed} climbs · {entry.total_attempts} att.</p>
+            <div className="text-right shrink-0">
+              <p className="font-body font-bold text-[12.5px] text-ink m-0">{entry.points} pts</p>
+              <p className="font-body text-[10.5px] text-ink2 mt-[2px] mb-0">{entry.climbs_completed} climbs · {entry.total_attempts} att.</p>
             </div>
           </Card>
         );
@@ -388,7 +387,6 @@ function QualifierLeaderboard({ compId, currentUserId }) {
 
 // ─── Finals tab ───────────────────────────────────────────────────────────────
 function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserId }) {
-  const P = useTheme();
   const navigate = useNavigate();
   const [results, setResults] = useState([]);
   const [loadingResults, setLoadingResults] = useState(true);
@@ -453,27 +451,31 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
     } finally { setSaving(false); }
   };
 
-  const rankColour = (n) => n === 1 ? P.primary : n === 2 ? P.ink2 : n === 3 ? P.accent : P.ink3;
+  const rankColour = (n) => n === 1 ? 'var(--primary)' : n === 2 ? 'var(--ink2)' : n === 3 ? 'var(--accent)' : 'var(--ink3)';
 
   return (
     <div>
       {leaderboard.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="mb-6">
           <Eyebrow style={{ marginBottom: 12 }}>Results</Eyebrow>
           <Card style={{ overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto auto', gap: '0 12px', background: P.lineSoft, padding: '8px 14px' }}>
+            <div className="grid px-[14px] py-2 bg-line-soft" style={{ gridTemplateColumns: 'auto 1fr auto auto auto', gap: '0 12px' }}>
               {['#', 'Climber', 'Tops', 'Zones', 'Att.'].map(h => (
-                <span key={h} style={{ fontFamily: P.body, fontWeight: 700, fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.ink2 }}>{h}</span>
+                <span key={h} className="font-body font-bold text-[10px] tracking-[0.14em] uppercase text-ink2">{h}</span>
               ))}
             </div>
             {leaderboard.map(e => (
-              <div key={e.user_id} onClick={() => navigate(`/profile/${e.user_id}`)}
-                style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto auto', gap: '0 12px', padding: '10px 14px', borderTop: `1px solid ${P.line}`, cursor: 'pointer', background: e.user_id === currentUserId ? P.lineSoft : 'transparent', alignItems: 'center' }}>
-                <span style={{ fontFamily: P.disp, fontSize: 16, color: rankColour(e.rank), minWidth: 20 }}>{e.rank}</span>
-                <span style={{ fontFamily: P.body, fontWeight: 700, fontSize: 13, color: P.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{e.username}</span>
-                <span style={{ fontFamily: P.body, fontWeight: 700, fontSize: 13, color: P.ink, textAlign: 'center' }}>{e.tops}<span style={{ fontFamily: P.body, fontSize: 10, color: P.ink3 }}>/{e.top_attempts}a</span></span>
-                <span style={{ fontFamily: P.body, fontWeight: 700, fontSize: 13, color: P.ink2, textAlign: 'center' }}>{e.zones}<span style={{ fontFamily: P.body, fontSize: 10, color: P.ink3 }}>/{e.zone_attempts}a</span></span>
-                <span style={{ fontFamily: P.body, fontSize: 11, color: P.ink3, textAlign: 'center' }}>{e.top_attempts + e.zone_attempts}</span>
+              <div
+                key={e.user_id}
+                onClick={() => navigate(`/profile/${e.user_id}`)}
+                className="grid px-[14px] py-[10px] cursor-pointer items-center"
+                style={{ gridTemplateColumns: 'auto 1fr auto auto auto', gap: '0 12px', borderTop: `1px solid var(--line)`, background: e.user_id === currentUserId ? 'var(--line-soft)' : 'transparent' }}
+              >
+                <span className="font-display text-base min-w-5" style={{ color: rankColour(e.rank) }}>{e.rank}</span>
+                <span className="font-body font-bold text-[13px] text-ink truncate">@{e.username}</span>
+                <span className="font-body font-bold text-[13px] text-ink text-center">{e.tops}<span className="font-body text-[10px] text-ink3">/{e.top_attempts}a</span></span>
+                <span className="font-body font-bold text-[13px] text-ink2 text-center">{e.zones}<span className="font-body text-[10px] text-ink3">/{e.zone_attempts}a</span></span>
+                <span className="font-body text-[11px] text-ink3 text-center">{e.top_attempts + e.zone_attempts}</span>
               </div>
             ))}
           </Card>
@@ -481,27 +483,32 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
       )}
 
       {leaderboard.length === 0 && !loadingResults && (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, textAlign: 'center', padding: '32px 0' }}>No results recorded yet.</p>
+        <p className="font-serif italic text-sm text-ink3 text-center py-8">No results recorded yet.</p>
       )}
 
       {isSetterUser && (
         <div>
           <Divider />
           <Eyebrow style={{ margin: '20px 0 12px' }}>Judging panel</Eyebrow>
-          {saveError && <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 13, marginBottom: 12 }}>{saveError}</p>}
+          {saveError && <p className="font-serif italic text-danger text-[13px] mb-3">{saveError}</p>}
 
           {compClimbs.length === 0 ? (
-            <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3 }}>No climbs added yet.</p>
+            <p className="font-serif italic text-sm text-ink3">No climbs added yet.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            <div className="flex flex-col gap-2 mb-4">
               {compClimbs.map(cc => (
-                <button key={cc.id} type="button" onClick={() => openJudging(cc)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, border: `1px solid ${judgingClimb?.id === cc.id ? P.primary : P.line}`, background: judgingClimb?.id === cc.id ? P.lineSoft : P.card, cursor: 'pointer', textAlign: 'left' }}>
+                <button
+                  key={cc.id}
+                  type="button"
+                  onClick={() => openJudging(cc)}
+                  className="flex items-center justify-between px-[14px] py-3 rounded-[12px] cursor-pointer text-left border transition-colors duration-150"
+                  style={{ border: `1px solid ${judgingClimb?.id === cc.id ? 'var(--primary)' : 'var(--line)'}`, background: judgingClimb?.id === cc.id ? 'var(--line-soft)' : 'var(--card)' }}
+                >
                   <div>
-                    <p style={{ fontFamily: P.disp, fontSize: 15, margin: 0, color: P.ink }}>{cc.climb_name}</p>
-                    <p style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink2, margin: '2px 0 0' }}>{cc.wall_name} · V{cc.climb_grade}</p>
+                    <p className="font-display text-[15px] m-0 text-ink">{cc.climb_name}</p>
+                    <p className="font-body text-[11.5px] text-ink2 mt-[2px] mb-0">{cc.wall_name} · V{cc.climb_grade}</p>
                   </div>
-                  <span style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink2 }}>
+                  <span className="font-body text-[11.5px] text-ink2">
                     {results.filter(r => r.comp_climb === cc.id).length}/{registrations.length} judged
                   </span>
                 </button>
@@ -511,30 +518,30 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
 
           {judgingClimb && registrations.length > 0 && (
             <Card style={{ padding: 16 }}>
-              <p style={{ fontFamily: P.disp, fontSize: 16, color: P.ink, marginBottom: 16 }}>
+              <p className="font-display text-base text-ink mb-4">
                 {judgingClimb.climb_name} — enter results per climber
               </p>
               {registrations.map(reg => {
                 const f = judgeForm[reg.user] || { topped: false, top_attempts: '', zoned: false, zone_attempts: '' };
                 return (
-                  <div key={reg.user} style={{ borderBottom: `1px solid ${P.line}`, paddingBottom: 16, marginBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <p style={{ fontFamily: P.disp, fontSize: 15, color: P.ink, margin: 0 }}>@{reg.username}</p>
+                  <div key={reg.user} className="pb-4 mb-4" style={{ borderBottom: `1px solid var(--line)` }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="font-display text-[15px] text-ink m-0">@{reg.username}</p>
                       <Btn size="sm" onClick={() => saveResult(reg.user)} disabled={saving}>{saving ? '…' : 'Save'}</Btn>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
                         <Toggle on={f.topped} onChange={v => setJudgeForm(prev => ({ ...prev, [reg.user]: { ...prev[reg.user], topped: v } }))} />
-                        <span style={{ fontFamily: P.body, fontSize: 13, color: P.ink }}>Topped</span>
+                        <span className="font-body text-[13px] text-ink">Topped</span>
                       </div>
                       {f.topped && (
                         <Field label="Top attempts" value={f.top_attempts} type="number"
                           onChange={v => setJudgeForm(prev => ({ ...prev, [reg.user]: { ...prev[reg.user], top_attempts: v } }))}
                           style={{ marginBottom: 0 }} />
                       )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="flex items-center gap-2">
                         <Toggle on={f.zoned} onChange={v => setJudgeForm(prev => ({ ...prev, [reg.user]: { ...prev[reg.user], zoned: v } }))} />
-                        <span style={{ fontFamily: P.body, fontSize: 13, color: P.ink }}>Zoned</span>
+                        <span className="font-body text-[13px] text-ink">Zoned</span>
                       </div>
                       {f.zoned && (
                         <Field label="Zone attempts" value={f.zone_attempts} type="number"
@@ -555,7 +562,6 @@ function FinalsTab({ comp, compClimbs, registrations, isSetterUser, currentUserI
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 function CompetitionPage() {
-  const P = useTheme();
   const { gymId, compId } = useParams();
   const decoded = getDecodedToken();
   const currentUserId = decoded?.user_id;
@@ -614,15 +620,7 @@ function CompetitionPage() {
   };
 
   if (loading) return <PageSkeleton />;
-
-  if (error || !comp) return (
-    <div style={{ minHeight: '100vh', background: P.sheet, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center', padding: '0 24px' }}>
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 14, marginBottom: 16 }}>{error || 'Competition not found.'}</p>
-        <button onClick={() => window.location.reload()} style={{ fontFamily: P.body, fontWeight: 700, fontSize: 13.5, padding: '10px 20px', borderRadius: 12, background: P.primary, color: '#fff', border: 'none', cursor: 'pointer' }}>Retry</button>
-      </div>
-    </div>
-  );
+  if (error || !comp) return <ErrorScreen message={error || 'Competition not found.'} onRetry={() => window.location.reload()} />;
 
   const isQualifier = comp.comp_type === 'qualifier';
   const tabs = [
@@ -632,7 +630,7 @@ function CompetitionPage() {
   ];
 
   const headerRight = (
-    <p style={{ fontFamily: P.body, fontSize: 12, color: P.skyText, opacity: .85, margin: '8px 0 0' }}>
+    <p className="font-body text-xs text-sky-text opacity-85 mt-2 mb-0">
       {fmtDate(comp.start_date)} → {fmtDate(comp.end_date)}
     </p>
   );

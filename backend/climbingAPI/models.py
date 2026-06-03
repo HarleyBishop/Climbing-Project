@@ -125,6 +125,18 @@ class Video(models.Model):
         return f"{self.user} video on {self.climb}"
 
 
+class Follow(models.Model):
+    follower = models.ForeignKey('User', on_delete=models.CASCADE, related_name='following')
+    following = models.ForeignKey('User', on_delete=models.CASCADE, related_name='followers')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['follower', 'following']
+
+    def __str__(self):
+        return f"{self.follower.username} → {self.following.username}"
+
+
 # ─── Competition System ───────────────────────────────────────────────────────
 # Competitions are gym-scoped and come in two flavours: qualifier (points-based,
 # open to all registered climbers) and finals (IFSC-style judged results, setter

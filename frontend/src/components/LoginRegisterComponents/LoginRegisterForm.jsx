@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ACCESS_TOKEN, REFRESH_TOKEN } from '../../constants';
 import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
-import { useTheme } from '../../theme';
 import { Btn, Field, Eyebrow } from '../ui/primitives';
 
 function GoogleWord() {
@@ -21,7 +20,6 @@ function GoogleWord() {
 }
 
 function LoginRegisterForm({ route, method }) {
-  const P = useTheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isSetterRole, setIsSetterRole] = useState(false);
@@ -47,8 +45,6 @@ function LoginRegisterForm({ route, method }) {
     }
   };
 
-  // useGoogleLogin (implicit flow) forwards the Google access_token to our
-  // backend which verifies it server-side and issues our own JWT pair.
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
@@ -86,19 +82,25 @@ function LoginRegisterForm({ route, method }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="flex flex-col gap-3">
         <Field label="Username" value={username} onChange={setUsername} placeholder="your handle" style={{ marginBottom: 0 }} />
         <Field label="Password" value={password} onChange={setPassword} placeholder="your password" type="password" style={{ marginBottom: 0 }} />
 
         {isRegister && (
           <div>
             <Eyebrow style={{ marginBottom: 8, fontSize: 10 }}>I'm registering as a…</Eyebrow>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div className="flex gap-[10px]">
               {[['climber', 'Climber'], ['setter', 'Setter / Gym owner']].map(([k, lab]) => {
                 const sel = isSetterRole ? k === 'setter' : k === 'climber';
                 return (
-                  <button key={k} type="button" onClick={() => setIsSetterRole(k === 'setter')}
-                    style={{ flex: 1, fontFamily: P.body, fontWeight: 600, fontSize: 13, padding: '10px 8px', borderRadius: 11, cursor: 'pointer', border: `1px solid ${sel ? P.primary : P.line}`, background: sel ? P.primary : P.card, color: sel ? '#fff' : P.ink, transition: 'all .12s' }}>
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setIsSetterRole(k === 'setter')}
+                    className={`flex-1 font-body font-semibold text-[13px] px-2 py-[10px] rounded-[11px] cursor-pointer border transition-all duration-[120ms] ${
+                      sel ? 'border-primary bg-primary text-white' : 'border-line bg-card text-ink'
+                    }`}
+                  >
                     {lab}
                   </button>
                 );
@@ -112,17 +114,17 @@ function LoginRegisterForm({ route, method }) {
         </Btn>
       </div>
 
-      <p style={{ textAlign: 'center', margin: '14px 0 0', fontFamily: P.body, fontSize: 13, color: P.ink2 }}>
+      <p className="text-center mt-[14px] mb-0 font-body text-[13px] text-ink2">
         {isRegister
-          ? <>Already have an account?{' '}<span onClick={() => navigate('/login')} style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 15, color: P.primary, cursor: 'pointer' }}>Login</span></>
-          : <>Don't have an account?{' '}<span onClick={() => navigate('/register')} style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 15, color: P.primary, cursor: 'pointer' }}>Register</span></>
+          ? <>Already have an account?{' '}<span onClick={() => navigate('/login')} className="font-serif italic text-[15px] text-primary cursor-pointer">Login</span></>
+          : <>Don't have an account?{' '}<span onClick={() => navigate('/register')} className="font-serif italic text-[15px] text-primary cursor-pointer">Register</span></>
         }
       </p>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
-        <span style={{ flex: 1, height: 1, background: P.line }} />
-        <span style={{ fontFamily: P.body, fontSize: 11.5, color: P.ink3 }}>or continue with</span>
-        <span style={{ flex: 1, height: 1, background: P.line }} />
+      <div className="flex items-center gap-3 my-[18px]">
+        <span className="flex-1 h-px bg-line" />
+        <span className="font-body text-[11.5px] text-ink3">or continue with</span>
+        <span className="flex-1 h-px bg-line" />
       </div>
 
       <Btn full variant="ghost" type="button" onClick={() => googleLogin()}>
@@ -130,7 +132,7 @@ function LoginRegisterForm({ route, method }) {
       </Btn>
 
       {isRegister && (
-        <p style={{ textAlign: 'center', margin: '12px 0 0', fontFamily: P.serif, fontStyle: 'italic', fontSize: 12.5, color: P.ink3, lineHeight: 1.5 }}>
+        <p className="text-center mt-3 mb-0 font-serif italic text-[12.5px] text-ink3 leading-[1.5]">
           Google sign-in always creates a Climber account. Setters register above.
         </p>
       )}

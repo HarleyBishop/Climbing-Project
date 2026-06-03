@@ -1,2 +1,81 @@
 @import "tailwindcss";
 
+@theme {
+  /* Font families */
+  --font-display: "Gloock", Georgia, serif;
+  --font-serif:   "Newsreader", Georgia, serif;
+  --font-body:    "Mulish", system-ui, sans-serif;
+
+  /* Theme color tokens — values come from CSS custom properties below */
+  --color-ink:          var(--ink);
+  --color-ink2:         var(--ink2);
+  --color-ink3:         var(--ink3);
+  --color-primary:      var(--primary);
+  --color-primary-d:    var(--primary-d);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent:       var(--accent);
+  --color-page:         var(--page);
+  --color-sheet:        var(--sheet);
+  --color-card:         var(--card);
+  --color-line:         var(--line);
+  --color-line-soft:    var(--line-soft);
+  --color-good:         var(--good);
+  --color-good-bg:      var(--good-bg);
+  --color-info:         var(--info);
+  --color-info-bg:      var(--info-bg);
+  --color-sky-text:     var(--sky-text);
+  --color-danger:       #bb5b46;
+}
+
+/* ── Meadow (default light theme) ──────────────────────── */
+:root,
+[data-theme="meadow"] {
+  --ink:          #36402c;
+  --ink2:         #6f7a60;
+  --ink3:         #9aa389;
+  --primary:      #cf6f49;
+  --primary-d:    #b85b39;
+  --primary-soft: rgba(207,111,73,.12);
+  --accent:       #7e9b5c;
+  --page:         #f3efe2;
+  --sheet:        #fbf5e6;
+  --card:         #fffaef;
+  --line:         #e8ddc6;
+  --line-soft:    #efe7d4;
+  --sky-text:     #3a4329;
+  --sky:          linear-gradient(180deg,#bfe2dd 0%,#d6e7d8 40%,#eef2dc 78%,#f6f1de 100%);
+  --glow:         radial-gradient(115% 78% at 80% 6%,rgba(255,248,222,.95),rgba(255,248,222,0) 55%);
+  --cloud:        rgba(255,255,255,.9);
+  --good:         #5e7a44;
+  --good-bg:      rgba(126,155,92,.16);
+  --info:         #5b6f8c;
+  --info-bg:      rgba(91,111,140,.14);
+  --title-shadow: 0 1px 10px rgba(255,255,255,.45);
+  --pill-border:  1px solid rgba(58,67,41,.22);
+}
+
+/* ── Dusk (dark theme) ─────────────────────────────────── */
+[data-theme="dusk"] {
+  --ink:          #322a3d;
+  --ink2:         #6e6479;
+  --ink3:         #9a90a4;
+  --primary:      #dc9a47;
+  --primary-d:    #c5833a;
+  --primary-soft: rgba(220,154,71,.14);
+  --accent:       #7486ad;
+  --page:         #efe7da;
+  --sheet:        #fbf2e3;
+  --card:         #fff8ed;
+  --line:         #ecdfcd;
+  --line-soft:    #f3e9da;
+  --sky-text:     #fdeede;
+  --sky:          linear-gradient(180deg,#3b4a72 0%,#65567f 42%,#a9748a 72%,#e7b079 96%);
+  --glow:         radial-gradient(85% 60% at 50% 98%,rgba(247,196,134,.85),rgba(247,196,134,0) 62%);
+  --cloud:        rgba(255,233,206,.40);
+  --good:         #6e8a96;
+  --good-bg:      rgba(116,134,173,.18);
+  --info:         #8d80ad;
+  --info-bg:      rgba(141,128,173,.18);
+  --title-shadow: 0 1px 12px rgba(20,16,40,.35);
+  --pill-border:  1px solid rgba(255,255,255,.25);
+}

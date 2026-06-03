@@ -4,21 +4,19 @@ import api from '../api';
 import { PageShell } from '../components/ui/PageShell';
 import { PageSkeleton } from '../components/Skeleton';
 import { isSetter } from '../auth';
-import { Card, Chip, Eyebrow, Btn } from '../components/ui/primitives';
-import { useTheme } from '../theme';
+import { Card, Chip, Eyebrow, Btn, ErrorScreen } from '../components/ui/primitives';
 
 function fmtDateLong(iso) {
   return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function CompCard({ comp, gymId }) {
-  const P = useTheme();
   const navigate = useNavigate();
   return (
     <Card hover onClick={() => navigate(`/gym/${gymId}/competitions/${comp.id}`)} style={{ padding: '14px 15px', marginBottom: 11 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-        <h3 style={{ fontFamily: P.disp, fontWeight: 400, fontSize: 18, margin: 0, color: P.ink, lineHeight: 1.12 }}>{comp.title}</h3>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+      <div className="flex items-start justify-between gap-[10px] mb-2">
+        <h3 className="font-display font-normal text-lg m-0 text-ink leading-[1.12]">{comp.title}</h3>
+        <div className="flex gap-[6px] shrink-0">
           <Chip tone={comp.comp_type === 'qualifier' ? 'qualifier' : 'finals'}>
             {comp.comp_type === 'qualifier' ? 'Qualifier' : 'Finals'}
           </Chip>
@@ -28,11 +26,11 @@ function CompCard({ comp, gymId }) {
         </div>
       </div>
       {comp.description && (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 13.5, color: P.ink2, lineHeight: 1.45, margin: '0 0 10px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <p className="font-serif italic text-[13.5px] text-ink2 leading-[1.45] m-0 mb-[10px] line-clamp-2">
           {comp.description}
         </p>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: P.body, fontSize: 11.5, color: P.ink3 }}>
+      <div className="flex items-center justify-between font-body text-[11.5px] text-ink3">
         <span>{fmtDateLong(comp.start_date)} → {fmtDateLong(comp.end_date)}</span>
         <span>{comp.registration_count} registered</span>
       </div>
@@ -41,7 +39,6 @@ function CompCard({ comp, gymId }) {
 }
 
 function CompetitionList() {
-  const P = useTheme();
   const { gymId } = useParams();
   const navigate = useNavigate();
   const canCreate = isSetter();
@@ -69,15 +66,7 @@ function CompetitionList() {
   }, [gymId]);
 
   if (loading) return <PageSkeleton />;
-
-  if (error) return (
-    <div style={{ minHeight: '100vh', background: P.sheet, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', color: '#bb5b46', fontSize: 14, marginBottom: 16 }}>{error}</p>
-        <button onClick={() => window.location.reload()} style={{ fontFamily: P.body, fontWeight: 700, fontSize: 13.5, padding: '10px 20px', borderRadius: 12, background: P.primary, color: '#fff', border: 'none', cursor: 'pointer' }}>Retry</button>
-      </div>
-    </div>
-  );
+  if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
 
   const open = comps.filter(c => c.status === 'open');
   const upcoming = comps.filter(c => c.status === 'upcoming');
@@ -87,28 +76,28 @@ function CompetitionList() {
     <PageShell back backLabel={gym?.name || 'Back'} backPath={`/gym/${gymId}`} eyebrow={gym?.name} title="Competitions">
 
       {open.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="mb-6">
           <Eyebrow style={{ marginBottom: 12 }}>Live now</Eyebrow>
           {open.map(c => <CompCard key={c.id} comp={c} gymId={gymId} />)}
         </div>
       )}
 
       {upcoming.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="mb-6">
           <Eyebrow style={{ marginBottom: 12 }}>Upcoming</Eyebrow>
           {upcoming.map(c => <CompCard key={c.id} comp={c} gymId={gymId} />)}
         </div>
       )}
 
       {closed.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="mb-6">
           <Eyebrow style={{ marginBottom: 12 }}>Past</Eyebrow>
           {closed.map(c => <CompCard key={c.id} comp={c} gymId={gymId} />)}
         </div>
       )}
 
       {comps.length === 0 && (
-        <p style={{ fontFamily: P.serif, fontStyle: 'italic', fontSize: 14, color: P.ink3, textAlign: 'center', padding: '40px 0' }}>
+        <p className="font-serif italic text-sm text-ink3 text-center py-10">
           No competitions yet{canCreate ? ' — create one below.' : '.'}
         </p>
       )}

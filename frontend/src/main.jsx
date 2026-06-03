@@ -7,10 +7,11 @@ import "./styles/style.css";
 import { ThemeContext, ThemeToggleContext, THEMES, MEADOW } from './theme';
 
 function Root() {
-  // Persist the user's theme choice across sessions.
-  const [themeKey, setThemeKey] = useState(
-    () => localStorage.getItem('bb-theme') || 'meadow'
-  );
+  const [themeKey, setThemeKey] = useState(() => {
+    const saved = localStorage.getItem('bb-theme') || 'meadow';
+    document.documentElement.dataset.theme = saved;
+    return saved;
+  });
 
   const palette = THEMES[themeKey] || MEADOW;
 
@@ -18,6 +19,7 @@ function Root() {
     const next = themeKey === 'meadow' ? 'dusk' : 'meadow';
     setThemeKey(next);
     localStorage.setItem('bb-theme', next);
+    document.documentElement.dataset.theme = next;
   };
 
   return (
@@ -29,11 +31,11 @@ function Root() {
             position="bottom-center"
             toastOptions={{
               style: {
-                fontFamily: '"Mulish", system-ui, sans-serif',
+                fontFamily: 'var(--font-body)',
                 fontSize: '13.5px',
-                background: palette.card,
-                color: palette.ink,
-                border: `1px solid ${palette.line}`,
+                background: 'var(--card)',
+                color: 'var(--ink)',
+                border: '1px solid var(--line)',
                 borderRadius: '12px',
               },
               error: {
@@ -45,9 +47,9 @@ function Root() {
               },
               success: {
                 style: {
-                  background: palette.goodBg,
-                  color: palette.good,
-                  border: `1px solid ${palette.good}55`,
+                  background: 'var(--good-bg)',
+                  color: 'var(--good)',
+                  border: '1px solid color-mix(in srgb, var(--good) 33%, transparent)',
                 },
               },
             }}
