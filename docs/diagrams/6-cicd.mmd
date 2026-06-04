@@ -1,0 +1,14 @@
+graph LR
+    Push["git push to master"]
+
+    Push --> BE_TEST["backend job\nPython 3.14 + SQLite\npython manage.py test"]
+    Push --> FE_TEST["frontend job\nNode 20\nnpm ci + npm test (Vitest)"]
+
+    BE_TEST -- pass --> Deploy_BE["deploy-backend\nPOST Render deploy hook"]
+    FE_TEST -- pass --> Deploy_FE["deploy-frontend\nPOST Vercel deploy hook"]
+
+    BE_TEST -- fail --> Block["deploy blocked"]
+    FE_TEST -- fail --> Block
+
+    Deploy_BE --> Render["Render\nGunicorn + Django + PostgreSQL"]
+    Deploy_FE --> Vercel["Vercel\nReact SPA + PWA"]

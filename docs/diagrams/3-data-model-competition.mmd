@@ -1,0 +1,88 @@
+erDiagram
+    Climb {
+        int id PK
+        string name
+    }
+    Gym {
+        int id PK
+        string name
+    }
+    User {
+        int id PK
+        string username
+    }
+    Competition {
+        int id PK
+        string title
+        string comp_type
+        datetime start_date
+        datetime end_date
+        int top_x_advance
+        int gym FK
+        int created_by FK
+        int linked_qualifier FK
+    }
+    Division {
+        int id PK
+        string name
+        int competition FK
+    }
+    CompRound {
+        int id PK
+        string name
+        int order
+        int competition FK
+    }
+    CompClimb {
+        int id PK
+        int points_value
+        int competition FK
+        int climb FK
+        int comp_round FK
+    }
+    CompRegistration {
+        int id PK
+        datetime registered_at
+        int competition FK
+        int user FK
+        int division FK
+    }
+    CompSend {
+        int id PK
+        int attempts
+        datetime logged_at
+        int comp_climb FK
+        int user FK
+    }
+    FinalsResult {
+        int id PK
+        bool topped
+        int top_attempts
+        bool zoned
+        int zone_attempts
+        datetime recorded_at
+        int comp_climb FK
+        int user FK
+        int recorded_by FK
+    }
+
+    Gym ||--o{ Competition : "hosts"
+    User ||--o{ Competition : "created_by (SET_NULL)"
+    Competition |o--o| Competition : "linked_qualifier"
+
+    Competition ||--o{ Division : "has"
+    Competition ||--o{ CompRound : "has"
+    Competition ||--o{ CompClimb : "includes"
+    Competition ||--o{ CompRegistration : "has"
+
+    Climb ||--o{ CompClimb : "featured in"
+    CompRound ||--o{ CompClimb : "contains"
+    Division ||--o{ CompRegistration : "categorizes"
+
+    User ||--o{ CompRegistration : "registers"
+    User ||--o{ CompSend : "logs"
+    User ||--o{ FinalsResult : "achieves"
+    User ||--o{ FinalsResult : "recorded_by (SET_NULL)"
+
+    CompClimb ||--o{ CompSend : "receives"
+    CompClimb ||--o{ FinalsResult : "has"

@@ -1,0 +1,22 @@
+graph TD
+    App["App.jsx"]
+
+    App --> PUB["Public Routes"]
+    App --> PROT["ProtectedRoute\n(valid JWT required)"]
+
+    PUB --> Login["/login"]
+    PUB --> Register["/register"]
+    PUB --> NotFound["* → 404"]
+
+    PROT --> Home["/ → Home\nGym list + Leaflet map"]
+    PROT --> Gym["/gym/:id → GymPage\nWalls + climbs dashboard"]
+    PROT --> Climb["/gym/:gymId/wall/:wallId/climb/:climbId\n→ ClimbPage\nSends · Reviews · Videos · Grade votes"]
+    PROT --> AddClimb["/gym/:gymId/wall/:wallId/add-climb\n→ AddClimb  (setter only)"]
+    PROT --> Archived["/gym/:gymId/wall/:wallId/archived\n→ ArchivedClimbs"]
+    PROT --> Profile["/profile → Profile (own)"]
+    PROT --> ProfileOther["/profile/:userId → Profile (other user)"]
+    PROT --> Leaderboard["/gym/:gymId/leaderboard\n→ Leaderboard"]
+    PROT --> Feed["/feed → Feed\nActivity from followed users"]
+    PROT --> CompList["/gym/:gymId/competitions\n→ CompetitionList"]
+    PROT --> CompPage["/gym/:gymId/competitions/:compId\n→ CompetitionPage\nQualifier or Finals view"]
+    PROT --> CreateComp["/gym/:gymId/competitions/create\n→ CreateCompetition  (setter only)"]

@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant C as React Client
+    participant B as Django Backend
+    participant G as Google OAuth API
+
+    Note over C,B: Username / Password Login
+    C->>B: POST /api/token/  {username, password}
+    B-->>C: {access, refresh}  (payload: username, is_setter)
+    C->>C: Store in localStorage
+
+    Note over C,B: Authenticated Request
+    C->>B: GET /api/*  Authorization: Bearer access
+    B-->>C: 200 + data
+
+    Note over C,B: Silent Token Refresh
+    C->>B: POST /api/token/refresh/  {refresh}
+    B-->>C: {access}
+
+    Note over C,B: Logout
+    C->>B: POST /api/token/blacklist/  {refresh}
+    B-->>C: 200 OK
+    C->>C: Clear localStorage, redirect /login
+
+    Note over C,G,B: Google OAuth (climbers only)
+    C->>G: Implicit flow via @react-oauth/google
+    G-->>C: Google access_token
+    C->>B: POST /api/auth/google/  {token}
+    B->>G: GET userinfo  (server-side verify)
+    G-->>B: {sub, email, name}
+    B-->>C: {access, refresh}  (creates user on first login)
+    C->>C: Store tokens, redirect /

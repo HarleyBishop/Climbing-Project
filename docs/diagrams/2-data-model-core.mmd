@@ -1,0 +1,88 @@
+erDiagram
+    User {
+        int id PK
+        string username
+        string email
+        bool is_verified_setter
+        string google_id
+        text bio
+    }
+    Gym {
+        int id PK
+        string name
+        string location
+        bool is_active
+        float lat
+        float lng
+        int added_by FK
+    }
+    Wall {
+        int id PK
+        string name
+        string description
+        int gym FK
+    }
+    Climb {
+        int id PK
+        string name
+        string colour
+        string image_url
+        int suggested_grade
+        float community_grade
+        bool is_archived
+        datetime set_at
+        int wall FK
+        int added_by FK
+    }
+    GradeVote {
+        int id PK
+        int grade
+        datetime created_at
+        int climb FK
+        int user FK
+    }
+    Send {
+        int id PK
+        int attempts
+        datetime sent_at
+        int climb FK
+        int user FK
+    }
+    Review {
+        int id PK
+        text comment
+        int stars
+        int attempts
+        datetime created_at
+        int climb FK
+        int user FK
+    }
+    Video {
+        int id PK
+        string video_url
+        datetime uploaded_at
+        int climb FK
+        int user FK
+    }
+    Follow {
+        int id PK
+        int follower FK
+        int following FK
+        datetime created_at
+    }
+
+    User ||--o{ Gym : "added_by (SET_NULL)"
+    User ||--o{ Climb : "added_by (SET_NULL)"
+    User ||--o{ GradeVote : "casts"
+    User ||--o{ Send : "logs"
+    User ||--o{ Review : "writes"
+    User ||--o{ Video : "uploads"
+    User ||--o{ Follow : "follower"
+    User ||--o{ Follow : "following"
+
+    Gym ||--o{ Wall : "contains"
+    Wall ||--o{ Climb : "has"
+    Climb ||--o{ GradeVote : "receives (upsert)"
+    Climb ||--o{ Send : "receives (upsert)"
+    Climb ||--o{ Review : "has"
+    Climb ||--o{ Video : "has"

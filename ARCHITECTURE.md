@@ -245,7 +245,7 @@ sequenceDiagram
     C->>C: Store in localStorage
 
     Note over C,B: Authenticated Request
-    C->>B: GET /api/*  Authorization: Bearer <access>
+    C->>B: GET /api/*  Authorization: Bearer access_token
     B-->>C: 200 + data
 
     Note over C,B: Silent Token Refresh
@@ -257,7 +257,7 @@ sequenceDiagram
     B-->>C: 200 OK
     C->>C: Clear localStorage, redirect /login
 
-    Note over C,G,B: Google OAuth (climbers only)
+    Note over C,B: Google OAuth (climbers only)
     C->>G: Implicit flow via @react-oauth/google
     G-->>C: Google access_token
     C->>B: POST /api/auth/google/  {token}
@@ -285,7 +285,7 @@ graph TD
     PROT --> Home["/ → Home\nGym list + Leaflet map"]
     PROT --> Gym["/gym/:id → GymPage\nWalls + climbs dashboard"]
     PROT --> Climb["/gym/:gymId/wall/:wallId/climb/:climbId\n→ ClimbPage\nSends · Reviews · Videos · Grade votes"]
-    PROT --> AddClimb["/gym/:gymId/wall/:wallId/add-climb\n→ AddClimb  [setter only]"]
+    PROT --> AddClimb["/gym/:gymId/wall/:wallId/add-climb\n→ AddClimb (setter only)"]
     PROT --> Archived["/gym/:gymId/wall/:wallId/archived\n→ ArchivedClimbs"]
     PROT --> Profile["/profile  →  Profile (own)"]
     PROT --> ProfileOther["/profile/:userId  →  Profile (other user)"]
@@ -293,7 +293,7 @@ graph TD
     PROT --> Feed["/feed → Feed\nActivity from followed users"]
     PROT --> CompList["/gym/:gymId/competitions\n→ CompetitionList"]
     PROT --> CompPage["/gym/:gymId/competitions/:compId\n→ CompetitionPage\nQualifier or Finals view"]
-    PROT --> CreateComp["/gym/:gymId/competitions/create\n→ CreateCompetition  [setter only]"]
+    PROT --> CreateComp["/gym/:gymId/competitions/create\n→ CreateCompetition (setter only)"]
 ```
 
 ---
@@ -310,7 +310,7 @@ graph LR
     BE_TEST -- pass --> Deploy_BE["deploy-backend\nPOST → Render deploy hook"]
     FE_TEST -- pass --> Deploy_FE["deploy-frontend\nPOST → Vercel deploy hook"]
 
-    BE_TEST -- fail --> Block["❌ deploy blocked"]
+    BE_TEST -- fail --> Block["deploy blocked"]
     FE_TEST -- fail --> Block
 
     Deploy_BE --> Render["Render\nGunicorn + Django + PostgreSQL"]
