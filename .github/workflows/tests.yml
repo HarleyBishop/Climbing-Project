@@ -1,0 +1,89 @@
+# CI pipeline: runs on every push and on every pull request targeting master.
+#
+# Two jobs run in PARALLEL (they don't depend on each other):
+#   - backend:  Django tests via manage.py test (SQLite — fast, no setup needed)
+#   - frontend: Vitest tests via npm test
+#
+# A "job" is an isolated virtual machine spun up by GitHub.
+# Each job installs its own dependencies from scratch, so they can't interfere.
+
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+
+  # ── Backend (Django) ──────────────────────────────────────────────────────────
+  backend:
+    name: Django Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # DATABASE_URL is intentionally not set — settings.py falls back to SQLite,
+      # which is built into Python and needs no server or credentials.
+      - name: Run tests
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DEBUG: 'True'
+        run: |
+          python manage.py test \
+            tests.test_models \
+            tests.test_permissions \
+            tests.test_views_auth \
+            tests.test_views_gym \
+            tests.test_views_leaderboard \
+            --verbosity=2
+
+  # ── Frontend (Vitest) ─────────────────────────────────────────────────────────
+  frontend:
+    name: Vitest Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend  # all `run` steps start inside frontend/
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 5. Install Node.js. node-version matches what Vite 8 requires.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Cache node_modules based on package-lock.json so npm install
+          # is skipped when nothing changed.
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # 6. Install JS packages. --ci is stricter than npm install:
+      #    it fails if package-lock.json is out of date, preventing
+      #    "works on my machine but not in CI" dependency drift.
+      - name: Install dependencies
+        run: npm ci
+
+      # 7. Run Vitest. npm test runs `vitest run` (single pass, no watch mode).
+      - name: Run tests
+        run: npm test
