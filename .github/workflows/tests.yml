@@ -87,3 +87,34 @@ jobs:
       # 7. Run Vitest. npm test runs `vitest run` (single pass, no watch mode).
       - name: Run tests
         run: npm test
+
+  # ── Deploy (only runs on master, only if BOTH test jobs passed) ───────────────
+  # needs: means this job won't start until the listed jobs finish successfully.
+  # If either test job fails, these deploy jobs are skipped entirely.
+  # if: github.ref ensures deploys don't fire on pull request branches —
+  # only actual merges/pushes to master trigger a real deploy.
+
+  deploy-backend:
+    name: Deploy Backend to Render
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      # A POST to Render's deploy hook URL tells it to pull the latest commit
+      # and redeploy. The URL contains a secret token — store it in GitHub
+      # Secrets (Settings → Secrets → Actions → RENDER_DEPLOY_HOOK).
+      - name: Trigger Render deploy
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      # Same pattern — Vercel's deploy hook triggers a production build.
+      # Store the URL as VERCEL_DEPLOY_HOOK in GitHub Secrets.
+      - name: Trigger Vercel deploy
+        run: curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
