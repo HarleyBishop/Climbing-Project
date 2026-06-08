@@ -9,10 +9,10 @@ function WallRow({ wall, onRemove }) {
   const hex = HOLD[wall.colour] || '#cd6f3f';
   return (
     <Card style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', marginBottom: 9 }}>
-      <span className="w-[11px] h-[11px] rounded-full shrink-0" style={{ background: hex }} />
+      <span className="w-2.75-h-2.75ounded-full shrink-0" style={{ background: hex }} />
       <div className="flex-1">
         <p className="font-display font-normal text-base m-0 text-ink">{wall.name}</p>
-        {wall.description && <p className="font-body text-[11.5px] text-ink2 mt-[2px] mb-0">{wall.description}</p>}
+        {wall.description && <p className="font-body text-[11.5px] text-ink2 mt-0.5 mb-0">{wall.description}</p>}
       </div>
       <button onClick={() => onRemove(wall.id)} className="bg-transparent border-0 cursor-pointer font-body font-semibold text-xs text-danger">Remove</button>
     </Card>
@@ -32,7 +32,7 @@ function AddWallForm({ onAddWall }) {
 
   return (
     <Card style={{ padding: '14px 15px', marginTop: 3 }}>
-      <div className="flex flex-col gap-[13px]">
+      <div className="flex flex-col gap-3.25">
         <Field label="Wall name" value={wallName} onChange={setWallName} placeholder="e.g. Overhang" style={{ marginBottom: 0 }} />
         <Field label="Description" optional value={wallDescription} onChange={setWallDescription} placeholder="Short description…" style={{ marginBottom: 0 }} />
         <div>
@@ -91,18 +91,18 @@ function CreateGymForm() {
   return (
     <PageShell back backLabel="Back" backPath="/" eyebrow="New gym" title="Set up your gym">
       {error && (
-        <div className="rounded-[12px] px-[14px] py-[10px] mb-5 font-serif italic text-[13.5px] text-danger" style={{ background: 'rgba(187,91,70,.10)', border: '1px solid rgba(187,91,70,.25)' }}>
+        <div className="rounded-xl px-3.5 py-2.5 mb-5 font-serif italic text-[13.5px] text-danger" style={{ background: 'rgba(187,91,70,.10)', border: '1px solid rgba(187,91,70,.25)' }}>
           {error}
         </div>
       )}
 
-      <div className="flex flex-col gap-[18px]">
+      <div className="flex flex-col gap-4.5">
         <Field label="Gym name" value={gymName} onChange={setGymName} placeholder="e.g. Boulder HQ" />
         <Field label="Location" value={location} onChange={setLocation} placeholder="e.g. 12 Forge St, Newstead" />
 
         <div>
           <Eyebrow style={{ marginBottom: 8, fontSize: 10 }}>Map coordinates · optional</Eyebrow>
-          <div className="flex gap-[10px]">
+          <div className="flex gap-2.5">
             <div className="flex-1">
               <input type="number" step="any" placeholder="Latitude e.g. -27.47" value={lat} onChange={e => setLat(e.target.value)} className={inputClass} />
             </div>
@@ -110,7 +110,7 @@ function CreateGymForm() {
               <input type="number" step="any" placeholder="Longitude e.g. 153.02" value={lng} onChange={e => setLng(e.target.value)} className={inputClass} />
             </div>
           </div>
-          <p className="font-serif italic text-[12.5px] text-ink3 mt-[6px] mb-0">
+          <p className="font-serif italic text-[12.5px] text-ink3 mt-1.5 mb-0">
             Right-click on Google Maps and copy the coordinates.
           </p>
         </div>
@@ -131,7 +131,7 @@ function CreateGymForm() {
           <AddWallForm onAddWall={addWall} />
         </div>
 
-        <div className="flex flex-col gap-[10px] mt-1">
+        <div className="flex flex-col gap-2.5 mt-1">
           <Btn full onClick={handleSubmit} disabled={loading}>{loading ? 'Creating gym…' : 'Create gym'}</Btn>
           <Btn full variant="ghost" onClick={() => navigate('/')}>Cancel</Btn>
         </div>
