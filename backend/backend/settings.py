@@ -118,14 +118,23 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 # ─── Database ────────────────────────────────────────────────────────────────
 # Environment-driven database config: if DATABASE_URL is set (production on
-# Render/Railway/Heroku), use Postgres via dj_database_url. Otherwise fall
-# back to SQLite for local development — no extra setup needed.
+# Supabase), use Postgres via dj_database_url. Otherwise fall back to SQLite
+# for local development — no extra setup needed.
 # conn_max_age=600 enables persistent connections on the Postgres path so
 # Django doesn't open a new DB connection on every request.
+# conn_health_checks pings a reused connection before each request, because
+# Supabase's pooler silently drops idle connections and Django would otherwise
+# hand a dead one to the next request and 500.
+# ssl_require: Supabase (like most hosted Postgres) rejects unencrypted connections.
 
 if os.getenv('DATABASE_URL'):
     DATABASES = {
-        'default': dj_database_url.config(default=os.getenv('DATABASE_URL'), conn_max_age=600)
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True,
+        )
     }
 else:
     DATABASES = {

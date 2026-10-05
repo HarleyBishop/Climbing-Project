@@ -6,9 +6,9 @@ This guide covers deploying the climbing app to **Render** (backend) and **Verce
 
 ## Architecture Overview
 
-- **Backend**: Django REST API on Render with free PostgreSQL database
+- **Backend**: Django REST API on Render
 - **Frontend**: React/Vite SPA on Vercel
-- **Database**: PostgreSQL on Render (10GB free tier)
+- **Database**: PostgreSQL on Supabase (free tier)
 - **Authentication**: JWT tokens + Google OAuth
 
 Both services integrate directly with GitHub for automatic deployments on git push.
@@ -26,14 +26,20 @@ Both services integrate directly with GitHub for automatic deployments on git pu
 
 ## Backend Setup (Render)
 
-### Step 1: Create PostgreSQL Database on Render
+### Step 1: Create PostgreSQL Database on Supabase
 
-1. Log into Render dashboard
-2. Click **New +** → **PostgreSQL**
-3. Choose a name (e.g., `climbing-app-db`)
-4. Select **free tier**
-5. Click **Create Database**
-6. Note the `DATABASE_URL` (connection string) — you'll need this
+Render's free Postgres is deleted ~30 days after creation, so the database lives on Supabase instead.
+
+1. Create a project at https://supabase.com (pick a region close to your Render service)
+2. Save the database password you set — Supabase only shows it once
+3. Click **Connect** (top of the project dashboard) → **Connection string** → **Session pooler**
+4. Copy the URI and substitute your password. It looks like:
+   `postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`
+
+Use the **Session pooler**, not the "Direct connection" — the direct host is IPv6-only, and Render can't reach IPv6 addresses.
+If your password contains symbols like `@`, `#` or `/`, URL-encode them (or pick a password without them).
+
+**Free tier caveat:** Supabase pauses a free project after 7 days without database activity. Data is kept; restore it with one click from the Supabase dashboard.
 
 ### Step 2: Create Web Service on Render
 
@@ -44,6 +50,9 @@ Both services integrate directly with GitHub for automatic deployments on git pu
    - **Region**: Your closest region
    - **Branch**: `master` (or your main branch)
    - **Runtime**: `Python 3`
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput`
+   - **Start Command**: `gunicorn backend.wsgi:application`
 4. Click **Create Web Service**
 
 ### Step 3: Add Environment Variables to Render
@@ -57,7 +66,7 @@ In the Render dashboard for your service, go to **Environment** and add:
 | `GOOGLE_CLIENT_ID` | `<from-google-cloud>` | New OAuth app credentials (see step 4 below) |
 | `ALLOWED_HOSTS` | `<your-render-domain>.onrender.com` | Will be assigned by Render (format: `climbing-api.onrender.com`) |
 | `CORS_ALLOWED_ORIGINS` | `https://<your-vercel-domain>.vercel.app` | Your Vercel frontend domain |
-| `DATABASE_URL` | `<from-postgresql-database>` | Provided by Render when you created the database |
+| `DATABASE_URL` | `<supabase-session-pooler-uri>` | From Step 1 |
 
 ### Step 4: Google OAuth Setup
 
@@ -75,7 +84,7 @@ In the Render dashboard for your service, go to **Environment** and add:
 
 Render automatically deploys when you push to GitHub. Check the **Logs** tab to see progress.
 
-The first deploy runs migrations automatically (via Procfile `release` command).
+The first deploy runs migrations automatically (they are part of the Build Command).
 
 ---
 
@@ -120,7 +129,7 @@ SECRET_KEY=<generate-new>
 GOOGLE_CLIENT_ID=<from-google-cloud>
 ALLOWED_HOSTS=<your-render-domain>.onrender.com
 CORS_ALLOWED_ORIGINS=https://<your-vercel-domain>.vercel.app
-DATABASE_URL=<from-render-postgres>
+DATABASE_URL=<supabase-session-pooler-uri>
 ```
 
 ### Frontend (Vercel)
@@ -138,8 +147,7 @@ VITE_API_URL=https://<your-render-domain>.onrender.com
 2. **Rotate credentials** for production:
    - Generate new `SECRET_KEY` (never use the development one)
    - Create new Google OAuth app credentials
-3. **First deployment will run migrations** — Render handles this via Procfile
-4. **Database backups**: Render provides automatic backups on free tier
+3. **Every deploy runs migrations** as part of the Build Command
 
 ---
 
@@ -215,7 +223,7 @@ After making code changes:
 
 - **Render**: 0.5 CPU, 512MB RAM (backend sleeps after 15 min inactivity)
 - **Vercel**: 100GB bandwidth/month
-- **PostgreSQL**: 10GB storage, 100MB/month download
+- **Supabase**: 500MB database, project pauses after 7 days of inactivity
 
 Portfolio projects rarely hit these limits. If you need performance improvements:
 - Render paid tier: $7/month (no sleep)

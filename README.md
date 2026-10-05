@@ -29,15 +29,15 @@ Outside of being a portfolio project, it's a genuinely usable tool for small or 
 | **Python / Django** | Core backend framework — models, ORM, admin, auth |
 | **Django REST Framework** | REST API — serializers, generic views, custom permissions |
 | **drf-spectacular** | Generates an OpenAPI 3 schema from the code; serves Swagger UI (`/api/docs/`) and ReDoc (`/api/redoc/`) |
-| **PostgreSQL** | Production database hosted on Render |
+| **PostgreSQL** | Production database hosted on Supabase |
 | **SQLite** | Local development database (zero config) |
 | **SimpleJWT** | JWT access + refresh token authentication |
 | **JWT Blacklisting** | Invalidates refresh tokens on logout so stolen tokens can't be reused |
 | **Google OAuth2** | Social sign-in via Google Identity Services, verified server-side |
 | **WhiteNoise** | Serves Django static files directly without a CDN |
-| **dj-database-url** | Parses the `DATABASE_URL` env var so the same settings file works locally (SQLite) and on Render (Postgres) |
+| **dj-database-url** | Parses the `DATABASE_URL` env var so the same settings file works locally (SQLite) and in production (Supabase Postgres) |
 | **Gunicorn** | WSGI server for production |
-| **Render** | Django app hosting + managed Postgres database |
+| **Render** | Django app hosting |
 
 ### Frontend
 | Technology | Purpose |
@@ -94,7 +94,7 @@ Outside of being a portfolio project, it's a genuinely usable tool for small or 
 
 ### Database & Hosting
 - Environment-driven settings: `DATABASE_URL` absent → SQLite (local), present → Postgres (production); same `settings.py` serves both
-- `conn_max_age=600` for persistent Postgres connections — avoids per-request TCP handshakes on Render's free tier
+- `conn_max_age=600` for persistent Postgres connections — avoids per-request TCP handshakes to the hosted database, plus `conn_health_checks` so connections the Supabase pooler dropped get replaced instead of erroring
 - Separate `requirements.txt` (production) and `requirements-local.txt` (no psycopg2 or gunicorn) to keep the local venv lightweight
 - Static file serving with WhiteNoise middleware (positioned after `SecurityMiddleware`)
 - Vercel auto-deploys on push to `master`; Render does the same for the Django service
