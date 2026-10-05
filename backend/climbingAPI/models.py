@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Avg, Count, Q
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 
@@ -19,6 +20,25 @@ class User(AbstractUser):
         return self.username
 
 
+class GymQuerySet(models.QuerySet):
+    def with_counts(self):
+        """
+        Annotates wall_count and climb_count directly onto each row. Doing it
+        at the queryset level means the DB computes the counts in one query
+        rather than one extra query per gym (N+1 problem).
+        GymSerializer reads these annotations.
+        """
+        return self.annotate(
+            wall_count=Count('walls', distinct=True),
+            climb_count=Count(
+                'walls__climbs',
+                # Only count climbs that haven't been archived.
+                filter=Q(walls__climbs__is_archived=False),
+                distinct=True,
+            ),
+        )
+
+
 class Gym(models.Model):
     name = models.CharField(max_length=100)
     location = models.CharField(max_length=100)
@@ -29,6 +49,8 @@ class Gym(models.Model):
     lng = models.FloatField(null=True, blank=True)
     # SET_NULL so deleting the setter account doesn't cascade-delete the gym.
     added_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='owner')
+
+    objects = GymQuerySet.as_manager()
 
     def __str__(self):
         return self.name
@@ -52,8 +74,8 @@ class Climb(models.Model):
     image_url = models.URLField(blank=True)
     # suggested_grade is set by the setter at creation and never changes.
     # community_grade is the rolling average of GradeVote entries, recalculated
-    # on every vote submission in views.py rather than being computed on-the-fly,
-    # so it can be returned cheaply without aggregating on each request.
+    # on every vote via recalculate_community_grade() rather than being computed
+    # on-the-fly, so it can be returned cheaply without aggregating per request.
     suggested_grade = models.IntegerField()
     community_grade = models.FloatField(null=True, blank=True)
     # Soft-delete pattern: archived climbs stay in the DB (preserving send
@@ -64,6 +86,11 @@ class Climb(models.Model):
     wall = models.ForeignKey('Wall', on_delete=models.CASCADE, related_name='climbs')
     # SET_NULL: if a setter account is deleted, their climbs stay in the DB.
     added_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, related_name='climbs_set')
+
+    def recalculate_community_grade(self):
+        avg = self.grade_votes.aggregate(Avg('grade'))['grade__avg']
+        self.community_grade = round(avg, 1) if avg is not None else None
+        self.save(update_fields=['community_grade'])
 
     def __str__(self):
         return self.name
@@ -148,6 +175,10 @@ class Competition(models.Model):
     FINALS = 'finals'
     TYPE_CHOICES = [(QUALIFIER, 'Qualifier'), (FINALS, 'Finals')]
 
+    UPCOMING = 'upcoming'
+    OPEN = 'open'
+    CLOSED = 'closed'
+
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     rules = models.TextField(blank=True)
@@ -171,10 +202,10 @@ class Competition(models.Model):
         # status field, which would require a background job to stay current.
         now = timezone.now()
         if now < self.start_date:
-            return 'upcoming'
+            return self.UPCOMING
         elif now <= self.end_date:
-            return 'open'
-        return 'closed'
+            return self.OPEN
+        return self.CLOSED
 
     def __str__(self):
         return f"{self.title} ({self.comp_type})"

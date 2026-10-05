@@ -9,7 +9,7 @@ Run with: python manage.py test tests.test_permissions
 from django.test import TestCase, RequestFactory
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
-from climbingAPI.views import IsSetterOrReadOnly
+from climbingAPI.permissions import IsSetterOrReadOnly
 
 User = get_user_model()
 

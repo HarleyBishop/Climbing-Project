@@ -46,14 +46,9 @@ jobs:
         env:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DEBUG: 'True'
-        run: |
-          python manage.py test \
-            tests.test_models \
-            tests.test_permissions \
-            tests.test_views_auth \
-            tests.test_views_gym \
-            tests.test_views_leaderboard \
-            --verbosity=2
+        # Discovers every tests/test_*.py, so new test files run in CI
+        # without having to be listed here.
+        run: python manage.py test tests --verbosity=2
 
   # ── Frontend (Vitest) ─────────────────────────────────────────────────────────
   frontend:

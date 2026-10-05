@@ -10,7 +10,7 @@ Run with: python manage.py test tests.test_views_auth
 from django.test import TestCase
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
-from climbingAPI.models import Follow
+from climbingAPI.models import Follow, Gym, Wall, Climb, Send, Review
 
 User = get_user_model()
 
@@ -161,9 +161,8 @@ class FollowTest(TestCase):
 
 
 # ─── User profile ──────────────────────────────────────────────────────────────
-# Users can only edit their own bio — editing another's should return 403.
-# The UserDetailView uses UserSerializer for GET (all fields) and
-# UserProfileSerializer for PATCH (bio only).
+# Users can only edit their own bio — editing another's should return 403
+# (IsSelfOrReadOnly). GET and PATCH both use UserProfileSerializer.
 
 class UserProfileTest(TestCase):
 
@@ -194,3 +193,51 @@ class UserProfileTest(TestCase):
     def test_is_following_false_when_not_following(self):
         res = self.client.get(f'/api/users/{self.other.id}/')
         self.assertFalse(res.data['is_following'])
+
+
+# ─── Activity feed ─────────────────────────────────────────────────────────────
+# Sends and reviews from followed users, merged into one newest-first list.
+# Sends and reviews are different models, so these check the merge and that
+# review-only fields don't leak onto send items.
+
+class ActivityFeedTest(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        self.me = make_user('me')
+        self.friend = make_user('friend')
+        self.stranger = make_user('stranger')
+        Follow.objects.create(follower=self.me, following=self.friend)
+        self.client.force_authenticate(user=self.me)
+
+        gym = Gym.objects.create(name='Gym', location='Town')
+        wall = Wall.objects.create(name='Wall', description='', gym=gym)
+        self.climb = Climb.objects.create(name='Crimpy', colour='Blue', suggested_grade=4, wall=wall)
+
+    def test_empty_when_following_nobody(self):
+        Follow.objects.all().delete()
+        res = self.client.get('/api/feed/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data, [])
+
+    def test_only_includes_followed_users(self):
+        Send.objects.create(climb=self.climb, user=self.friend)
+        Send.objects.create(climb=self.climb, user=self.stranger)
+        res = self.client.get('/api/feed/')
+        self.assertEqual([item['username'] for item in res.data], ['friend'])
+
+    def test_sends_and_reviews_merged_newest_first(self):
+        Send.objects.create(climb=self.climb, user=self.friend, attempts=3)
+        Review.objects.create(climb=self.climb, user=self.friend, comment='Fun', stars=4)
+        res = self.client.get('/api/feed/')
+        self.assertEqual([item['type'] for item in res.data], ['review', 'send'])
+
+    def test_review_fields_only_on_review_items(self):
+        Send.objects.create(climb=self.climb, user=self.friend)
+        Review.objects.create(climb=self.climb, user=self.friend, comment='Fun', stars=4)
+        res = self.client.get('/api/feed/')
+        review, send = res.data
+        self.assertEqual(review['comment'], 'Fun')
+        self.assertNotIn('comment', send)
+        self.assertEqual(send['climb_name'], 'Crimpy')
+        self.assertEqual(send['gym_id'], self.climb.wall.gym_id)

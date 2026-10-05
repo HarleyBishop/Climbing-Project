@@ -13,10 +13,18 @@ const api = axios.create({
 // Reads the JWT access token from localStorage and attaches it as a Bearer
 // token. This is what authenticates every API call to the Django backend.
 // If no token exists (e.g. on the login page) the header is simply omitted.
+//
+// Public auth endpoints never get the header: DRF's JWTAuthentication rejects
+// an expired/invalid token with 401 *before* permission checks run, so a stale
+// token left in localStorage would otherwise break register/login/refresh even
+// though those views are AllowAny.
+const PUBLIC_AUTH_PATHS = ["/api/user/register/", "/api/token/", "/api/token/refresh/", "/api/auth/"]
+
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem(ACCESS_TOKEN);
-        if (token) {
+        const isPublicAuth = PUBLIC_AUTH_PATHS.some((p) => config.url?.startsWith(p))
+        if (token && !isPublicAuth) {
             config.headers.Authorization = `Bearer ${token}`
         }
         return config

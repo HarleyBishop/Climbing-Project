@@ -108,32 +108,46 @@ Defines every database table. Each class is a table, each field is a column.
 | `CompSend` | Self-reported send during a qualifier. One per (user, comp climb) |
 | `FinalsResult` | Judge-entered IFSC result: topped/zoned with attempt counts |
 
-### `backend/climbingAPI/serializers.py`
-Serializers sit between your models and the JSON that the API sends/receives. Think of them as translators.
+### `backend/climbingAPI/serializers/` and `views/`
+Serializers sit between your models and the JSON that the API sends/receives; views handle one URL endpoint each. Both are split into matching files by domain, so the serializer for a view is always in the file with the same name:
 
+| File | Covers |
+|---|---|
+| `users.py` | Registration, Google login, profiles, password change, follows, activity feed |
+| `gyms.py` | Gyms, walls, climbs, wall archiving |
+| `climb_activity.py` | Grade votes, sends, reviews, videos |
+| `competitions.py` | Competitions, divisions, rounds, comp climbs, registration, comp sends, finals results |
+| `leaderboards.py` | Gym, qualifier and finals rankings |
+| `serializers/common.py` | Shared pieces: `DetailSerializer` and the `ClimbContextFields` mixin |
+
+**Conventions** (also listed in `views/__init__.py`):
+- Every endpoint returns data through a serializer, so response shapes are declared once and appear in the API docs at `/api/docs/`.
+- "Create or update" endpoints (grade votes, sends, comp sends, finals results, registrations) do their `update_or_create` inside the serializer's `create()`. Views stay the standard DRF shape.
+- Setter-only writes use the `IsSetterOrReadOnly` permission class rather than ad-hoc checks inside views.
+- Business-rule failures (e.g. "competition closed") raise `BadRequest` / `PermissionDenied`, which return `{"detail": "..."}`.
+
+**Notable pieces:**
 - **`CustomTokenObtainPairSerializer`** — adds `username` and `is_setter` to the JWT payload so the frontend can read them from the token.
-- **`UserSerializer`** — handles registration. `password` is write-only so it never leaks in a response. Calls `create_user()` (not `create()`) so the password gets hashed.
-- **`UserProfileSerializer`** — used for PATCH requests. Only `bio` is writable; everything else is read-only.
-- **`GymSerializer`** — includes `wall_count` and `climb_count` as computed fields. These come from DB-level annotations (one COUNT query) not Python loops.
-- **`ClimbSerializer`** — denormalises `wall_name` and `added_by_username` so the frontend doesn't need follow-up requests.
-- **`SendSerializer`** — heavily denormalised. Includes the full chain of `climb → wall → gym` names and IDs so the profile page can show "you sent X on Y wall at Z gym" and link to it, all from a single response.
-- **`CompetitionSerializer`** — embeds divisions, rounds, registration count, and whether the current user is registered, all in one response.
+- **`ClimbContextFields`** — mixin adding the `climb → wall → gym` names and IDs to sends, reviews, videos and feed items, so the profile page can show "you sent X on Y wall at Z gym" and link to it from a single response.
+- **`Gym.objects.with_counts()`** (in `models.py`) — annotates `wall_count` and `climb_count` at DB level, avoiding N+1 queries.
+- **Leaderboards** — each is a `User` queryset annotated with its scores plus a `ROW_NUMBER()` window rank, so aggregation and sorting happen in one SQL query.
+- **`ActivityFeedView`** — sends and reviews are annotated with a shared `feed_type`/`timestamp` so the two models can be merged and serialized as one list.
 
-### `backend/climbingAPI/views.py`
-Where the actual API logic lives. Each view handles one URL endpoint.
+### `backend/climbingAPI/permissions.py`
+- `IsSetterOrReadOnly` — GET is open to anyone. POST/PUT/PATCH/DELETE require `is_verified_setter=True`.
+- `IsSelfOrReadOnly` — anyone can read a profile; only that user can edit it.
 
-**Permissions:**
-- `IsSetterOrReadOnly` — GET is open to anyone. POST/PUT/DELETE require `is_verified_setter=True`. Applied to gym, wall, and climb endpoints.
+### `backend/climbingAPI/oauth.py`
+Google sign-in helpers: fetch the Google profile, find or create the user (by Google sub ID → then email → then a new account; setters are blocked), and issue a JWT pair.
 
-**Helper functions:**
-- `gym_queryset_with_counts()` — annotates `wall_count` and `climb_count` onto the queryset at DB level, avoiding N+1 queries.
-- `_get_or_create_oauth_user()` — handles Google OAuth. Looks up by Google sub ID → then by email → then creates a new account. Blocks setters from using OAuth.
+### `backend/climbingAPI/exceptions.py`
+`BadRequest` — a 400 with a plain `{"detail": "..."}` body, matching DRF's 403/404 format.
 
-**Key views:**
+**Key endpoints:**
 
 | View | URL (approx) | What it does |
 |---|---|---|
-| `CreateUserView` | `POST /api/user/register/` | Creates a new account |
+| `RegisterView` | `POST /api/user/register/` | Creates a new account |
 | `UserDetailView` | `GET/PATCH /api/users/:id/` | Returns profile info; allows bio edit |
 | `FollowView` | `POST/DELETE /api/users/:id/follow/` | Follow or unfollow someone |
 | `ActivityFeedView` | `GET /api/feed/` | Returns the 50 most recent sends/reviews from people you follow |
@@ -152,8 +166,11 @@ Where the actual API logic lives. Each view handles one URL endpoint.
 | `CompetitionListCreateView` | `GET/POST /api/gyms/:id/competitions/` | List or create competitions |
 | `CompRegisterView` | `POST /api/competitions/:id/register/` | Sign up for a competition |
 | `CompSendCreateView` | `POST /api/competitions/:id/log-send/` | Log a send during a qualifier (checks: comp open, user registered, valid climb) |
+| `FinalsResultListCreateView` | `GET/POST /api/competitions/:id/finals-results/` | Judges record or correct finals results |
 | `QualifierLeaderboardView` | `GET /api/competitions/:id/leaderboard/` | Points ranking with tiebreak on attempts |
 | `FinalsLeaderboardView` | `GET /api/competitions/:id/finals-leaderboard/` | IFSC ranking: tops → attempts → zones → zone attempts |
+
+The full, always-up-to-date list with request/response shapes is at `/api/docs/` (Swagger) or `/api/redoc/`.
 
 ### `backend/climbingAPI/urls.py`
 Maps every URL pattern to its view class. This is how Django knows which view to call for which URL.

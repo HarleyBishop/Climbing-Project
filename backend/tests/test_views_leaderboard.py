@@ -327,6 +327,46 @@ class FinalsLeaderboardTest(TestCase):
         self.assertEqual(res.data[1]['rank'], 2)
 
 
+# ─── Finals result entry ───────────────────────────────────────────────────────
+# Judges POST a result on every save in the judging panel, so a second POST for
+# the same climber + problem must update the existing result, not fail.
+
+class FinalsResultEntryTest(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        self.setter = make_user('setter', is_setter=True)
+        self.climber = make_user('climber')
+        self.gym = make_gym(self.setter)
+        self.wall = make_wall(self.gym)
+        self.comp = make_finals_comp(self.gym, self.setter)
+        self.cc = CompClimb.objects.create(competition=self.comp, climb=make_climb(self.wall, self.setter))
+        self.url = f'/api/competitions/{self.comp.id}/finals-results/'
+        self.client.force_authenticate(user=self.setter)
+
+    def test_judge_can_correct_a_result(self):
+        payload = {'comp_climb': self.cc.id, 'user': self.climber.id}
+        self.client.post(self.url, {**payload, 'zoned': True, 'zone_attempts': 2})
+        res = self.client.post(self.url, {**payload, 'topped': True, 'top_attempts': 3})
+
+        self.assertIn(res.status_code, [200, 201])
+        result = FinalsResult.objects.get(comp_climb=self.cc, user=self.climber)
+        self.assertTrue(result.topped)
+        self.assertEqual(result.top_attempts, 3)
+        self.assertEqual(FinalsResult.objects.count(), 1)
+
+    def test_climber_cannot_record_results(self):
+        self.client.force_authenticate(user=self.climber)
+        res = self.client.post(self.url, {'comp_climb': self.cc.id, 'user': self.climber.id, 'topped': True})
+        self.assertEqual(res.status_code, 403)
+
+    def test_climb_from_another_competition_rejected(self):
+        other_comp = make_finals_comp(self.gym, self.setter)
+        other_cc = CompClimb.objects.create(competition=other_comp, climb=make_climb(self.wall, self.setter, name='x'))
+        res = self.client.post(self.url, {'comp_climb': other_cc.id, 'user': self.climber.id, 'topped': True})
+        self.assertEqual(res.status_code, 400)
+
+
 # ─── Competition send guards ───────────────────────────────────────────────────
 # CompSendCreateView has three guards before accepting a send:
 #   1. Competition must be 'open'.

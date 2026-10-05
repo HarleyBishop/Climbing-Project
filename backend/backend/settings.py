@@ -36,6 +36,21 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    # drf-spectacular introspects views/serializers to generate an OpenAPI 3
+    # schema, which powers the Swagger UI at /api/docs/.
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Climbing API',
+    'DESCRIPTION': 'REST API for gyms, climbs, sends, reviews and competitions. '
+                   'Authenticate via POST /api/token/, then click "Authorize" and '
+                   'paste the access token.',
+    'VERSION': '1.0.0',
+    # Keep the raw schema endpoint out of its own docs.
+    'SERVE_INCLUDE_SCHEMA': False,
+    # Persist the Bearer token across page reloads in Swagger UI.
+    'SWAGGER_UI_SETTINGS': {'persistAuthorization': True},
 }
 
 # Access tokens expire in 60 minutes; refresh tokens in 1 day.
@@ -44,7 +59,7 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'TOKEN_OBTAIN_SERIALIZER': 'climbingAPI.serializers.CustomTokenObtainPairSerializer',
+    'TOKEN_OBTAIN_SERIALIZER': 'climbingAPI.serializers.users.CustomTokenObtainPairSerializer',
 }
 
 INSTALLED_APPS = [
@@ -55,6 +70,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     "corsheaders",
     "climbingAPI",
     # token_blacklist enables the /api/token/blacklist/ endpoint so logout

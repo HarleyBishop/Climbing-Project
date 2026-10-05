@@ -260,6 +260,19 @@ class GradeVoteTest(TestCase):
         # Average of 4 and 6 = 5.0
         self.assertEqual(self.climb.community_grade, 5.0)
 
+    def test_deleting_vote_recalculates_community_grade(self):
+        self.client.force_authenticate(user=self.user1)
+        vote_id = self.client.post(self.url, {'grade': 4}).data['id']
+        self.client.force_authenticate(user=self.user2)
+        self.client.post(self.url, {'grade': 6})
+
+        self.client.force_authenticate(user=self.user1)
+        res = self.client.delete(f'{self.url}{vote_id}/')
+        self.assertEqual(res.status_code, 204)
+        self.climb.refresh_from_db()
+        # Only user2's vote of 6 is left.
+        self.assertEqual(self.climb.community_grade, 6.0)
+
 
 # ─── My Gyms (gyms where the user has sends) ──────────────────────────────────
 # MyGymsView returns gyms where the logged-in user has at least one send,
