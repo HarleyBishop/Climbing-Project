@@ -9,7 +9,7 @@ graph TB
     end
 
     subgraph Vercel["Vercel — Frontend"]
-        Vite["React 19 + Vite SPA\nTailwind CSS · React Router v7"]
+        Vite["React 19 + Vite SPA\nTailwind CSS v4 · Motion / Magic UI · React Router v7"]
     end
 
     subgraph Render["Render — Backend"]

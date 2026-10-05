@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import api from '../api';
+import { getDecodedToken } from '../auth';
 import { PageShell } from '../components/ui/PageShell';
 import { PageSkeleton } from '../components/Skeleton';
 import { getRank, RankBadge, RANKS, MAGNUS_RANK } from '../utils/rankUtils';
-import { Card, Chip, Eyebrow, Divider, ErrorScreen } from '../components/ui/primitives';
+import { Card, Chip, SectionLabel, Avatar, Empty, ErrorScreen, ProgressBar } from '../components/ui/primitives';
+import { BlurFade } from '../components/magicui/blur-fade';
+import { NumberTicker } from '../components/magicui/number-ticker';
+import { cn } from '../lib/utils';
 
 const GRADE_POINTS = [
   { label: 'V0 – V2', points: 10 },
@@ -13,15 +16,35 @@ const GRADE_POINTS = [
   { label: 'V5 – V6', points: 40 },
   { label: 'V7 – V8', points: 70 },
   { label: 'V9 – V10', points: 100 },
-  { label: 'V11 – V12+', points: 150 },
+  { label: 'V11+', points: 150 },
 ];
+
+// Top three, laid out 2-1-3 like a podium.
+function Podium({ entries, currentUserId, onPick }) {
+  const order = [entries[1], entries[0], entries[2]].filter(Boolean);
+  return (
+    <div className="mb-10 grid grid-cols-3 items-end gap-3">
+      {order.map(e => (
+        <Card
+          key={e.user_id}
+          onClick={() => onPick(e.user_id)}
+          className={cn('flex flex-col items-center px-3 text-center', e.rank === 1 ? 'pt-8 pb-7' : 'pt-6 pb-5', e.user_id === currentUserId && 'ring-2 ring-accent')}
+        >
+          <span className="text-sm font-semibold text-faint">#{e.rank}</span>
+          <Avatar name={e.username} size={e.rank === 1 ? 64 : 48} className="my-3" />
+          <p className="w-full truncate text-sm font-semibold">@{e.username}</p>
+          <p className="mt-1 text-2xl font-semibold"><NumberTicker value={e.points} /></p>
+          <p className="text-xs text-muted">points</p>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 function Leaderboard() {
   const { gymId } = useParams();
   const navigate = useNavigate();
-
-  const token = localStorage.getItem('access');
-  const currentUserId = jwtDecode(token).user_id;
+  const currentUserId = getDecodedToken()?.user_id;
 
   const [gym, setGym] = useState(null);
   const [rankings, setRankings] = useState([]);
@@ -48,103 +71,64 @@ function Leaderboard() {
   if (loading) return <PageSkeleton />;
   if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
 
-  const myRank = rankings.find(r => r.user_id === currentUserId);
   const maxPoints = rankings[0]?.points || 1;
-
-  const rankColour = (n) => n === 1 ? 'var(--primary)' : n === 2 ? 'var(--ink2)' : n === 3 ? 'var(--accent)' : 'var(--ink3)';
+  const toProfile = (id) => navigate(`/profile/${id}`);
 
   return (
-    <PageShell back backLabel={gym?.name || 'Back'} backPath={`/gym/${gymId}`} eyebrow={`${gym?.name} · ${gym?.climb_count} active climbs`} title="Leaderboard">
+    <PageShell back backLabel={gym.name} backPath={`/gym/${gymId}`} eyebrow={`${gym.name} · ${gym.climb_count} active climbs`} title="Leaderboard">
+      {rankings.length === 0 && <Empty>No sends logged yet. Be the first!</Empty>}
+      {rankings.length > 0 && <Podium entries={rankings.slice(0, 3)} currentUserId={currentUserId} onPick={toProfile} />}
 
-      {myRank && (
-        <>
-          <Eyebrow style={{ marginBottom: 10 }}>Your ranking</Eyebrow>
-          <Card style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '15px 16px', marginBottom: 24, border: '2px solid var(--primary)' }}>
-            <span className="font-display text-[26px] min-w-[38px] text-center" style={{ color: rankColour(myRank.rank) }}>#{myRank.rank}</span>
-            <div className="flex-1">
-              <p className="font-display font-normal text-lg m-0 text-ink">@{myRank.username}</p>
-              <div className="flex items-center gap-[7px] mt-[5px]">
-                <Chip tone="you">You</Chip>
-                <RankBadge rank={getRank(myRank.points, myRank.rank)} />
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="font-display text-[19px] m-0 text-ink">{myRank.points.toLocaleString()}</p>
-              <p className="font-body text-[11px] text-ink2 mt-[2px] mb-0">{myRank.send_count} sends</p>
-            </div>
-          </Card>
-        </>
-      )}
-
-      <Eyebrow style={{ marginBottom: 12 }}>Top climbers</Eyebrow>
-      <div className="flex flex-col gap-[9px] mb-6">
-        {rankings.map(entry => {
+      <div className="space-y-2">
+        {rankings.slice(3).map(entry => {
           const isMe = entry.user_id === currentUserId;
-          const rk = getRank(entry.points, entry.rank);
-          const bar = Math.round((entry.points / maxPoints) * 100);
           return (
-            <Card
-              key={entry.user_id}
-              hover
-              onClick={() => navigate(`/profile/${entry.user_id}`)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', border: isMe ? '2px solid var(--primary)' : '1px solid var(--line)' }}
-            >
-              <span className="font-display text-lg min-w-6 text-center" style={{ color: rankColour(entry.rank) }}>{entry.rank}</span>
-              <div className="w-8 h-8 rounded-full bg-line-soft border border-line flex items-center justify-center font-body font-bold text-[11px] text-ink shrink-0">
-                {entry.username?.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-[7px] mb-[6px]">
-                  <span className="font-body font-bold text-[13px] text-ink truncate">@{entry.username}</span>
+            <Card key={entry.user_id} onClick={() => toProfile(entry.user_id)} className={cn('flex items-center gap-4 px-5 py-3', isMe && 'ring-2 ring-accent')}>
+              <span className="w-6 text-center font-semibold text-faint">{entry.rank}</span>
+              <Avatar name={entry.username} size={32} />
+              <div className="min-w-0 flex-1">
+                <div className="mb-1.5 flex items-center gap-2">
+                  <span className="truncate text-sm font-semibold">@{entry.username}</span>
                   {isMe && <Chip tone="you">You</Chip>}
                 </div>
-                <div className="h-[6px] bg-line-soft rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${bar}%` }} />
-                </div>
+                <ProgressBar pct={Math.round((entry.points / maxPoints) * 100)} />
               </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <RankBadge rank={rk} showName={false} iconSize={15} />
-                <span className="font-body font-bold text-[12.5px] text-ink">{entry.points.toLocaleString()}</span>
-              </div>
+              <RankBadge rank={getRank(entry.points, entry.rank)} showName={false} iconSize={15} />
+              <span className="w-14 text-right text-sm font-semibold">{entry.points.toLocaleString()}</span>
             </Card>
           );
         })}
-        {rankings.length === 0 && (
-          <p className="font-serif italic text-sm text-ink3 text-center py-6">No sends logged yet — be the first!</p>
-        )}
       </div>
 
-      <Divider m={4} />
-
-      <Eyebrow style={{ margin: '24px 0 12px' }}>Rank tiers</Eyebrow>
-      <Card style={{ overflow: 'hidden', marginBottom: 24 }}>
-        {RANKS.map((rk, i) => (
-          <div key={rk.name} className="flex items-center gap-[11px] px-[14px] py-[9px]" style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
-            <div style={{ width: 108 }}><RankBadge rank={rk} /></div>
-            <div className="flex-1 h-[6px] bg-line-soft rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${Math.max(4, Math.round((rk.min / 4500) * 100))}%`, background: rk.color }} />
+      <BlurFade inView className="mt-16">
+        <SectionLabel>Rank tiers</SectionLabel>
+        <Card className="divide-y divide-line">
+          {RANKS.map(rk => (
+            <div key={rk.name} className="flex items-center gap-4 px-5 py-3">
+              <div className="w-28"><RankBadge rank={rk} /></div>
+              <div className="flex-1"><ProgressBar pct={Math.max(4, Math.round((rk.min / 4500) * 100))} colour={rk.color} /></div>
+              <span className="w-16 text-right text-sm text-muted">{rk.min === 0 ? '0 pts' : `${rk.min.toLocaleString()}+`}</span>
             </div>
-            <span className="font-body text-[11px] text-ink2 w-[62px] text-right">{rk.min === 0 ? '0 pts' : `${rk.min.toLocaleString()}+`}</span>
+          ))}
+          <div className="flex items-center gap-4 px-5 py-3">
+            <div className="w-28"><RankBadge rank={MAGNUS_RANK} /></div>
+            <p className="flex-1 text-sm text-muted">Top 20 at this gym</p>
           </div>
-        ))}
-        <div className="flex items-center gap-[11px] px-[14px] py-[9px]" style={{ borderTop: '1px solid var(--line)' }}>
-          <div style={{ width: 108 }}><RankBadge rank={MAGNUS_RANK} /></div>
-          <p className="flex-1 font-serif italic text-[12.5px] text-ink2 m-0">Top 20 at this gym</p>
-        </div>
-      </Card>
+        </Card>
+      </BlurFade>
 
-      <Eyebrow style={{ marginBottom: 12 }}>Points per grade</Eyebrow>
-      <Card style={{ overflow: 'hidden' }}>
-        {GRADE_POINTS.map((t, i) => (
-          <div key={i} className="flex items-center gap-3 px-[14px] py-[11px]" style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
-            <span className="font-serif italic text-[13.5px] text-ink w-[78px]">{t.label}</span>
-            <div className="flex-1 h-[7px] bg-line-soft rounded-full overflow-hidden">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round((t.points / 150) * 100)}%` }} />
+      <BlurFade inView className="mt-16">
+        <SectionLabel>Points per grade</SectionLabel>
+        <Card className="divide-y divide-line">
+          {GRADE_POINTS.map(t => (
+            <div key={t.label} className="flex items-center gap-4 px-5 py-3">
+              <span className="w-20 text-sm font-medium">{t.label}</span>
+              <div className="flex-1"><ProgressBar pct={Math.round((t.points / 150) * 100)} /></div>
+              <span className="w-16 text-right text-sm font-semibold">{t.points} pts</span>
             </div>
-            <span className="font-body font-bold text-[12.5px] text-ink w-[52px] text-right">{t.points} pts</span>
-          </div>
-        ))}
-      </Card>
+          ))}
+        </Card>
+      </BlurFade>
     </PageShell>
   );
 }

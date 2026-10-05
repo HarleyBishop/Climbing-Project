@@ -280,10 +280,10 @@ function RankIcon({ name, size = 20 }) {
 // the badge's text size.
 export function RankBadge({ rank, showName = true, iconSize = 16 }) {
   return (
-    <span className="inline-flex items-center gap-[6px] px-[9px] py-[3px] rounded-lg" style={{ background: rank.bg }}>
+    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1" style={{ background: rank.bg }}>
       <RankIcon name={rank.name} size={iconSize} />
       {showName && (
-        <span className="font-body font-bold text-[11.5px]" style={{ color: rank.color }}>
+        <span className="text-xs font-semibold" style={{ color: rank.color }}>
           {rank.name}
         </span>
       )}

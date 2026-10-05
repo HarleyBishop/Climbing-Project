@@ -4,36 +4,25 @@ import api from '../api';
 import { PageShell } from '../components/ui/PageShell';
 import { PageSkeleton } from '../components/Skeleton';
 import { isSetter } from '../auth';
-import { Card, Chip, Eyebrow, Btn, ErrorScreen } from '../components/ui/primitives';
+import { Card, Chip, SectionLabel, Btn, Empty, ErrorScreen } from '../components/ui/primitives';
+import { BlurFade } from '../components/magicui/blur-fade';
 
-function fmtDateLong(iso) {
-  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function CompCard({ comp, gymId }) {
   const navigate = useNavigate();
   return (
-    <Card hover onClick={() => navigate(`/gym/${gymId}/competitions/${comp.id}`)} style={{ padding: '14px 15px', marginBottom: 11 }}>
-      <div className="flex items-start justify-between gap-[10px] mb-2">
-        <h3 className="font-display font-normal text-lg m-0 text-ink leading-[1.12]">{comp.title}</h3>
-        <div className="flex gap-[6px] shrink-0">
-          <Chip tone={comp.comp_type === 'qualifier' ? 'qualifier' : 'finals'}>
-            {comp.comp_type === 'qualifier' ? 'Qualifier' : 'Finals'}
-          </Chip>
-          <Chip tone={comp.status === 'open' ? 'open' : comp.status === 'upcoming' ? 'upcoming' : 'closed'}>
-            {comp.status.charAt(0).toUpperCase() + comp.status.slice(1)}
-          </Chip>
-        </div>
+    <Card onClick={() => navigate(`/gym/${gymId}/competitions/${comp.id}`)} className="p-6">
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        <Chip tone={comp.comp_type}>{capitalise(comp.comp_type)}</Chip>
+        <Chip tone={comp.status}>{comp.status === 'open' ? 'Live now' : capitalise(comp.status)}</Chip>
       </div>
-      {comp.description && (
-        <p className="font-serif italic text-[13.5px] text-ink2 leading-[1.45] m-0 mb-[10px] line-clamp-2">
-          {comp.description}
-        </p>
-      )}
-      <div className="flex items-center justify-between font-body text-[11.5px] text-ink3">
-        <span>{fmtDateLong(comp.start_date)} → {fmtDateLong(comp.end_date)}</span>
-        <span>{comp.registration_count} registered</span>
-      </div>
+      <h3 className="text-xl font-semibold">{comp.title}</h3>
+      {comp.description && <p className="mt-1 line-clamp-2 text-muted">{comp.description}</p>}
+      <p className="mt-4 text-sm text-faint">
+        {fmtDate(comp.start_date)} – {fmtDate(comp.end_date)} · {comp.registration_count} registered
+      </p>
     </Card>
   );
 }
@@ -68,41 +57,27 @@ function CompetitionList() {
   if (loading) return <PageSkeleton />;
   if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
 
-  const open = comps.filter(c => c.status === 'open');
-  const upcoming = comps.filter(c => c.status === 'upcoming');
-  const closed = comps.filter(c => c.status === 'closed');
+  const groups = [
+    ['Live now', comps.filter(c => c.status === 'open')],
+    ['Upcoming', comps.filter(c => c.status === 'upcoming')],
+    ['Past', comps.filter(c => c.status === 'closed')],
+  ].filter(([, list]) => list.length > 0);
+
+  const createButton = canCreate && (
+    <Btn className="mt-6" onClick={() => navigate(`/gym/${gymId}/competitions/create`)}>Create competition</Btn>
+  );
 
   return (
-    <PageShell back backLabel={gym?.name || 'Back'} backPath={`/gym/${gymId}`} eyebrow={gym?.name} title="Competitions">
-
-      {open.length > 0 && (
-        <div className="mb-6">
-          <Eyebrow style={{ marginBottom: 12 }}>Live now</Eyebrow>
-          {open.map(c => <CompCard key={c.id} comp={c} gymId={gymId} />)}
-        </div>
-      )}
-
-      {upcoming.length > 0 && (
-        <div className="mb-6">
-          <Eyebrow style={{ marginBottom: 12 }}>Upcoming</Eyebrow>
-          {upcoming.map(c => <CompCard key={c.id} comp={c} gymId={gymId} />)}
-        </div>
-      )}
-
-      {closed.length > 0 && (
-        <div className="mb-6">
-          <Eyebrow style={{ marginBottom: 12 }}>Past</Eyebrow>
-          {closed.map(c => <CompCard key={c.id} comp={c} gymId={gymId} />)}
-        </div>
-      )}
-
-      {comps.length === 0 && (
-        <p className="font-serif italic text-sm text-ink3 text-center py-10">
-          No competitions yet{canCreate ? ' — create one below.' : '.'}
-        </p>
-      )}
-
-      {canCreate && <Btn full onClick={() => navigate(`/gym/${gymId}/competitions/create`)}>+ Create competition</Btn>}
+    <PageShell back backLabel={gym.name} backPath={`/gym/${gymId}`} eyebrow={gym.name} title="Competitions" right={createButton}>
+      {comps.length === 0 && <Empty>No competitions yet.</Empty>}
+      {groups.map(([label, list]) => (
+        <BlurFade key={label} inView className="mb-12">
+          <SectionLabel>{label}</SectionLabel>
+          <div className="space-y-3">
+            {list.map(c => <CompCard key={c.id} comp={c} gymId={gymId} />)}
+          </div>
+        </BlurFade>
+      ))}
     </PageShell>
   );
 }

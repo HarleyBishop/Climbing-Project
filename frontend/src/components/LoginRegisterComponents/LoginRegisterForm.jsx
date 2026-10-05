@@ -1,60 +1,50 @@
 import { useState } from 'react';
-import api from '../../api';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ACCESS_TOKEN, REFRESH_TOKEN } from '../../constants';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
-import { Btn, Field, Eyebrow } from '../ui/primitives';
+import api from '../../api';
+import { ACCESS_TOKEN, REFRESH_TOKEN } from '../../constants';
+import { Btn, Field, Segmented } from '../ui/primitives';
 
-function GoogleWord() {
+function GoogleIcon() {
   return (
-    <span style={{ fontWeight: 800, fontSize: 14 }}>
-      <span style={{ color: '#4285F4' }}>G</span>
-      <span style={{ color: '#EA4335' }}>o</span>
-      <span style={{ color: '#FBBC05' }}>o</span>
-      <span style={{ color: '#4285F4' }}>g</span>
-      <span style={{ color: '#34A853' }}>l</span>
-      <span style={{ color: '#EA4335' }}>e</span>
-    </span>
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+    </svg>
   );
 }
 
 function LoginRegisterForm({ route, method }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isSetterRole, setIsSetterRole] = useState(false);
+  const [role, setRole] = useState('climber');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from?.pathname || '/';
-
-  const name = method === 'login' ? 'Login' : 'Register';
   const isRegister = method === 'register';
 
-  const handleOAuthSuccess = (tokens) => {
+  const storeTokensAndGo = (tokens) => {
     localStorage.setItem(ACCESS_TOKEN, tokens.access);
     localStorage.setItem(REFRESH_TOKEN, tokens.refresh);
     navigate(redirectTo, { replace: true });
-  };
-
-  const handleOAuthError = (err) => {
-    if (err?.response?.status === 403) {
-      toast.error('Setter accounts cannot use OAuth. Please log in with username and password.');
-    } else {
-      toast.error('OAuth sign-in failed. Please try again.');
-    }
   };
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
         const res = await api.post('/api/auth/google/', { access_token: tokenResponse.access_token });
-        handleOAuthSuccess(res.data);
+        storeTokensAndGo(res.data);
       } catch (err) {
-        handleOAuthError(err);
+        toast.error(err?.response?.status === 403
+          ? 'Setter accounts cannot use Google sign-in. Please use your username and password.'
+          : 'Google sign-in failed. Please try again.');
       }
     },
-    onError: () => { toast.error('Google sign-in failed. Please try again.'); },
+    onError: () => toast.error('Google sign-in failed. Please try again.'),
   });
 
   const handleSubmit = async (e) => {
@@ -62,80 +52,56 @@ function LoginRegisterForm({ route, method }) {
     setLoading(true);
     try {
       const payload = { username, password };
-      if (isRegister) payload.is_verified_setter = isSetterRole;
+      if (isRegister) payload.is_verified_setter = role === 'setter';
       const res = await api.post(route, payload);
-      if (method === 'login') {
-        localStorage.setItem(ACCESS_TOKEN, res.data.access);
-        localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
-        navigate(redirectTo, { replace: true });
-      } else {
-        navigate('/login');
-      }
+      if (isRegister) navigate('/login');
+      else storeTokensAndGo(res.data);
     } catch (error) {
       const data = error?.response?.data;
-      const msg = data?.username?.[0] || data?.password?.[0] || data?.detail || 'Something went wrong. Please try again.';
-      toast.error(msg);
+      toast.error(data?.username?.[0] || data?.password?.[0] || data?.detail || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="flex flex-col gap-3">
-        <Field label="Username" value={username} onChange={setUsername} placeholder="your handle" style={{ marginBottom: 0 }} />
-        <Field label="Password" value={password} onChange={setPassword} placeholder="your password" type="password" style={{ marginBottom: 0 }} />
-
-        {isRegister && (
-          <div>
-            <Eyebrow style={{ marginBottom: 8, fontSize: 10 }}>I'm registering as a…</Eyebrow>
-            <div className="flex gap-[10px]">
-              {[['climber', 'Climber'], ['setter', 'Setter / Gym owner']].map(([k, lab]) => {
-                const sel = isSetterRole ? k === 'setter' : k === 'climber';
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setIsSetterRole(k === 'setter')}
-                    className={`flex-1 font-body font-semibold text-[13px] px-2 py-[10px] rounded-[11px] cursor-pointer border transition-all duration-[120ms] ${
-                      sel ? 'border-primary bg-primary text-white' : 'border-line bg-card text-ink'
-                    }`}
-                  >
-                    {lab}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <Btn full type="submit" disabled={loading} style={{ marginTop: 3 }}>
-          {loading ? '…' : name}
-        </Btn>
-      </div>
-
-      <p className="text-center mt-[14px] mb-0 font-body text-[13px] text-ink2">
-        {isRegister
-          ? <>Already have an account?{' '}<span onClick={() => navigate('/login')} className="font-serif italic text-[15px] text-primary cursor-pointer">Login</span></>
-          : <>Don't have an account?{' '}<span onClick={() => navigate('/register')} className="font-serif italic text-[15px] text-primary cursor-pointer">Register</span></>
-        }
-      </p>
-
-      <div className="flex items-center gap-3 my-[18px]">
-        <span className="flex-1 h-px bg-line" />
-        <span className="font-body text-[11.5px] text-ink3">or continue with</span>
-        <span className="flex-1 h-px bg-line" />
-      </div>
-
-      <Btn full variant="ghost" type="button" onClick={() => googleLogin()}>
-        <GoogleWord />
-      </Btn>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Field label="Username" value={username} onChange={setUsername} placeholder="your handle" />
+      <Field label="Password" value={password} onChange={setPassword} placeholder="••••••••" type="password" />
 
       {isRegister && (
-        <p className="text-center mt-3 mb-0 font-serif italic text-[12.5px] text-ink3 leading-[1.5]">
-          Google sign-in always creates a Climber account. Setters register above.
-        </p>
+        <div>
+          <span className="mb-1.5 block text-sm font-medium">I'm registering as a</span>
+          <Segmented
+            layoutId="role"
+            value={role}
+            onChange={setRole}
+            options={[{ key: 'climber', label: 'Climber' }, { key: 'setter', label: 'Setter / Gym owner' }]}
+          />
+        </div>
       )}
+
+      <Btn full type="submit" disabled={loading} className="mt-2">
+        {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
+      </Btn>
+
+      <div className="flex items-center gap-3 py-1 text-xs text-faint">
+        <span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" />
+      </div>
+
+      <Btn full variant="ghost" onClick={() => googleLogin()}>
+        <GoogleIcon /> Continue with Google
+      </Btn>
+      {isRegister && (
+        <p className="text-center text-xs text-muted">Google sign-in always creates a Climber account.</p>
+      )}
+
+      <p className="pt-2 text-center text-sm text-muted">
+        {isRegister ? 'Already have an account? ' : "Don't have an account? "}
+        <Link to={isRegister ? '/login' : '/register'} className="font-medium text-accent hover:underline">
+          {isRegister ? 'Sign in' : 'Create one'}
+        </Link>
+      </p>
     </form>
   );
 }

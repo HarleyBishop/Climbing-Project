@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import api from '../api';
 import { useParams, useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
-import { PageSkeleton } from '../components/Skeleton';
-import { HOLD, GRAIN } from '../theme';
-import { Card, Btn, Eyebrow, Divider, SectionLabel, GradePills, Stars, Modal, Field, Avatar, ErrorScreen } from '../components/ui/primitives';
+import api from '../api';
 import { getDecodedToken } from '../auth';
+import { PageShell } from '../components/ui/PageShell';
+import { PageSkeleton } from '../components/Skeleton';
+import { holdColour } from '../lib/holds';
+import { Card, Btn, SectionLabel, GradePills, Stars, Modal, Field, Avatar, Empty, ErrorText, ErrorScreen } from '../components/ui/primitives';
+import { BlurFade } from '../components/magicui/blur-fade';
+import { NumberTicker } from '../components/magicui/number-ticker';
 
 const GRADES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -32,12 +34,9 @@ function ClimbPage() {
 
   const { gymId, wallId, climbId } = useParams();
   const navigate = useNavigate();
+  const base = `/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}`;
 
-  const token = localStorage.getItem('access');
-  const currentUserId = jwtDecode(token).user_id;
-  const decoded = getDecodedToken();
-  const username = decoded?.username ?? '';
-
+  const currentUserId = getDecodedToken()?.user_id;
   const myVote = gradeVote.find(v => v.user === currentUserId);
   const mySend = sends.find(s => s.user === currentUserId);
 
@@ -47,11 +46,11 @@ function ClimbPage() {
       setError(null);
       try {
         const [climbRes, voteRes, reviewRes, videoRes, sendRes] = await Promise.all([
-          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/`),
-          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`),
-          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`),
-          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`),
-          api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`),
+          api.get(`${base}/`),
+          api.get(`${base}/votes/`),
+          api.get(`${base}/reviews/`),
+          api.get(`${base}/videos/`),
+          api.get(`${base}/sends/`),
         ]);
         setClimb(climbRes.data);
         setGradeVote(voteRes.data);
@@ -62,14 +61,15 @@ function ClimbPage() {
       finally { setLoading(false); }
     };
     fetchData();
-  }, [gymId, wallId, climbId]);
+  }, [base]);
 
   const handleVote = async (grade) => {
     setVoteError(null);
     try {
-      await api.post(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`, { grade });
-      const res = await api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/votes/`);
-      setGradeVote(res.data);
+      await api.post(`${base}/votes/`, { grade });
+      const [voteRes, climbRes] = await Promise.all([api.get(`${base}/votes/`), api.get(`${base}/`)]);
+      setGradeVote(voteRes.data);
+      setClimb(climbRes.data);
     } catch { setVoteError("Couldn't save your vote. Please try again."); }
   };
 
@@ -77,8 +77,8 @@ function ClimbPage() {
     setSendError(null);
     if (!attempts || parseInt(attempts) < 1) { setSendError('Please enter a valid number of attempts.'); return; }
     try {
-      await api.post(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`, { attempts: parseInt(attempts) });
-      const res = await api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/sends/`);
+      await api.post(`${base}/sends/`, { attempts: parseInt(attempts) });
+      const res = await api.get(`${base}/sends/`);
       setSends(res.data);
       setAttempts('');
       setShowSendModal(false);
@@ -91,14 +91,12 @@ function ClimbPage() {
     if (stars === 0) { setReviewError('Please select a star rating.'); return; }
     if (!reviewAttempts || parseInt(reviewAttempts) < 1) { setReviewError('Please enter a valid number of attempts.'); return; }
     try {
-      await api.post(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`, { comment, stars, attempts: parseInt(reviewAttempts) });
+      await api.post(`${base}/reviews/`, { comment, stars, attempts: parseInt(reviewAttempts) });
       if (videoUrl) {
-        await api.post(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`, { video_url: videoUrl });
-        const vidRes = await api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/videos/`);
-        setVideos(vidRes.data);
+        await api.post(`${base}/videos/`, { video_url: videoUrl });
+        setVideos((await api.get(`${base}/videos/`)).data);
       }
-      const revRes = await api.get(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}/reviews/`);
-      setReviews(revRes.data);
+      setReviews((await api.get(`${base}/reviews/`)).data);
       setComment(''); setStars(0); setReviewAttempts(''); setVideoUrl('');
       setShowReviewModal(false);
     } catch { setReviewError("Couldn't submit your review. Please try again."); }
@@ -107,162 +105,138 @@ function ClimbPage() {
   if (loading) return <PageSkeleton />;
   if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
 
-  const hold = HOLD[climb.colour] || '#cd6f3f';
+  const hold = holdColour(climb.colour);
+  const setOn = new Date(climb.set_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 
   return (
-    <div className="min-h-screen bg-sheet">
-      {/* Full-bleed colour hero using the climb's hold colour */}
-      <div className="relative overflow-hidden" style={{ minHeight: 192 }}>
-        <div className="absolute inset-0" style={{ background: `linear-gradient(165deg, ${hold} 0%, ${hold} 55%, rgba(0,0,0,.18) 130%)` }} />
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(90% 70% at 75% 12%, rgba(255,255,255,.3), transparent 60%)' }} />
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: GRAIN, backgroundSize: '160px 160px', opacity: 0.13, mixBlendMode: 'soft-light' }} />
-        <div className="relative max-w-[640px] mx-auto px-5 pt-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => navigate(`/gym/${gymId}`)}
-              className="bg-transparent border-0 cursor-pointer font-body font-semibold text-[13.5px] text-white inline-flex items-center gap-1"
-            >
-              <span className="text-[17px]">‹</span> {climb.wall_name}
+    <PageShell back backLabel={climb.wall_name} backPath={`/gym/${gymId}`}>
+      {/* Hero tile in the climb's hold colour (or its photo). */}
+      <div
+        className="relative -mt-6 overflow-hidden rounded-[2rem] p-8 text-white sm:p-10"
+        style={{ background: climb.image_url ? undefined : `radial-gradient(120% 100% at 85% 0%, rgba(255,255,255,.35), transparent 50%), ${hold}` }}
+      >
+        {climb.image_url && (
+          <>
+            <img src={climb.image_url} alt="" className="absolute inset-0 size-full object-cover" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/70 to-black/10" />
+          </>
+        )}
+        <div className="relative pt-16 sm:pt-24 [text-shadow:0_1px_12px_rgba(0,0,0,.2)]">
+          <p className="text-sm font-semibold opacity-90">{climb.colour} · {climb.wall_name}</p>
+          <h1 className="mt-1 text-5xl font-semibold sm:text-6xl">{climb.name}</h1>
+          <p className="mt-3 opacity-90">
+            Set by{' '}
+            <button onClick={() => navigate(`/profile/${climb.added_by}`)} className="cursor-pointer underline underline-offset-4">
+              @{climb.added_by_username}
             </button>
-            <Avatar name={username} size={30} onClick={() => navigate('/profile')} />
-          </div>
-          <div className="mt-[30px] pb-[30px]">
-            <p className="font-body font-bold text-[10.5px] tracking-[0.16em] uppercase m-0 mb-[7px]" style={{ color: 'rgba(255,255,255,.85)' }}>
-              {climb.colour} hold · {climb.wall_name}
-            </p>
-            <h1 className="font-display font-normal text-[34px] leading-none m-0 text-white" style={{ textShadow: '0 2px 14px rgba(0,0,0,.22)' }}>{climb.name}</h1>
-            <p className="font-serif italic text-[14.5px] mt-2 mb-0" style={{ color: 'rgba(255,255,255,.92)' }}>
-              Set by{' '}
-              <button
-                onClick={() => navigate(`/profile/${climb.added_by}`)}
-                className="bg-transparent border-0 p-0 cursor-pointer font-serif italic text-[14.5px] underline underline-offset-[3px]"
-                style={{ color: 'rgba(255,255,255,.92)' }}
-              >
-                @{climb.added_by_username}
-              </button>
-              {' · '}{new Date(climb.set_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-            </p>
-          </div>
+            {' · '}{setOn}
+          </p>
         </div>
       </div>
 
-      {/* Cream sheet */}
-      <div className="relative -mt-5 bg-sheet rounded-[22px_22px_0_0] shadow-[0_-8px_24px_rgba(40,40,30,.10)]">
-        <div className="max-w-[640px] mx-auto px-5 pt-5 pb-10">
-
-          {/* Stats row */}
-          <div className="flex border border-line rounded-[14px] bg-card px-0 py-[14px] mb-4">
-            {[
-              { v: `V${climb.suggested_grade}`, l: 'Setter' },
-              { v: climb.community_grade ? `V${climb.community_grade}` : '—', l: 'Community' },
-              { v: sends.length, l: 'Sends' },
-              { v: reviews.length, l: 'Reviews' },
-            ].map((s, i) => (
-              <div key={s.l} className="flex-1 text-center px-1" style={{ borderRight: i < 3 ? '1px solid var(--line)' : 'none' }}>
-                <p className="font-display font-normal text-[23px] m-0 text-ink leading-none">{s.v}</p>
-                <p className="font-body font-semibold text-[9.5px] tracking-[0.08em] uppercase text-ink2 mt-[5px] mb-0">{s.l}</p>
-              </div>
-            ))}
+      {/* Stats count up as they appear. */}
+      <div className="mt-4 grid grid-cols-4 gap-3">
+        {[
+          { v: climb.suggested_grade, prefix: 'V', l: 'Setter grade' },
+          { v: climb.community_grade, prefix: 'V', l: 'Community', decimals: 1 },
+          { v: sends.length, l: 'Sends' },
+          { v: reviews.length, l: 'Reviews' },
+        ].map(s => (
+          <div key={s.l} className="rounded-2xl bg-white py-5 text-center ring-1 ring-line/60">
+            <p className="text-2xl font-semibold sm:text-3xl">
+              {s.v == null ? '—' : <>{s.prefix}<NumberTicker value={s.v} decimalPlaces={s.v % 1 ? s.decimals ?? 0 : 0} /></>}
+            </p>
+            <p className="mt-1 text-xs text-muted">{s.l}</p>
           </div>
+        ))}
+      </div>
 
-          {/* Send strip */}
-          {mySend ? (
-            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', background: 'var(--good-bg)', borderColor: 'transparent', marginBottom: 16 }}>
-              <span className="text-good text-[17px]">✓</span>
-              <p className="flex-1 font-serif italic text-[14.5px] text-good m-0">
-                You sent this! <strong className="not-italic font-body font-bold">{mySend.attempts} attempts</strong>
-              </p>
-              <Btn size="sm" variant="ghost" onClick={() => setShowSendModal(true)}>Edit</Btn>
-            </Card>
-          ) : (
-            <Card style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', marginBottom: 16 }}>
-              <p className="flex-1 font-serif italic text-[15px] text-ink m-0">Logged your send yet?</p>
-              <Btn size="sm" onClick={() => setShowSendModal(true)}>Log send</Btn>
-            </Card>
-          )}
+      <Card className="mt-4 flex items-center gap-4 p-5">
+        {mySend ? (
+          <>
+            <span className="flex size-9 items-center justify-center rounded-full bg-good-soft text-good">✓</span>
+            <p className="flex-1">You sent this in <strong>{mySend.attempts} attempts</strong>.</p>
+            <Btn size="sm" variant="ghost" onClick={() => setShowSendModal(true)}>Edit</Btn>
+          </>
+        ) : (
+          <>
+            <p className="flex-1 text-lg font-medium">Sent it?</p>
+            <Btn size="sm" variant="accent" onClick={() => setShowSendModal(true)}>Log send</Btn>
+          </>
+        )}
+      </Card>
 
-          {/* Grade vote */}
-          <SectionLabel style={{ margin: '24px 0 10px' }}>Vote the grade</SectionLabel>
-          {voteError && <p className="font-serif italic text-danger text-[13px] m-0 mb-2">{voteError}</p>}
-          <GradePills grades={GRADES} value={myVote?.grade ?? null} onPick={handleVote} />
-          <p className="font-serif italic text-[13px] text-ink3 mt-[10px] mb-0">
-            {myVote !== undefined ? `You voted V${myVote.grade}. Community sits at V${climb.community_grade || climb.suggested_grade}.` : 'Tap a grade to add your vote.'}
-          </p>
+      <BlurFade inView className="mt-16">
+        <SectionLabel>Vote the grade</SectionLabel>
+        {voteError && <ErrorText>{voteError}</ErrorText>}
+        <GradePills grades={GRADES} value={myVote?.grade ?? null} onPick={handleVote} />
+        <p className="mt-3 text-sm text-muted">
+          {myVote ? `You voted V${myVote.grade}. Community sits at V${climb.community_grade ?? climb.suggested_grade}.` : 'Tap a grade to add your vote.'}
+        </p>
+      </BlurFade>
 
-          <Divider m={24} />
-
-          {/* Videos */}
-          <SectionLabel>Beta videos · {videos.length}</SectionLabel>
-          <div className="flex gap-[11px] flex-wrap mb-6">
+      <BlurFade inView className="mt-16">
+        <SectionLabel right={videos.length}>Beta videos</SectionLabel>
+        {videos.length === 0 ? <Empty>No videos yet.</Empty> : (
+          <div className="grid gap-3 sm:grid-cols-2">
             {videos.map(video => (
-              <video key={video.id} width="180" height="120" controls className="rounded-[12px] border border-line">
+              <video key={video.id} controls className="aspect-video w-full rounded-2xl bg-black">
                 <source src={video.video_url} type="video/mp4" />
               </video>
             ))}
-            {videos.length === 0 && (
-              <p className="font-serif italic text-sm text-ink3">No videos yet.</p>
-            )}
           </div>
+        )}
+      </BlurFade>
 
-          <Divider m={4} />
-
-          {/* Reviews */}
-          <SectionLabel style={{ margin: '24px 0 12px' }}>Reviews · {reviews.length}</SectionLabel>
-          <div className="flex flex-col gap-[18px] mb-5">
-            {reviews.map((rv, i) => (
-              <div key={rv.id} style={{ borderBottom: i < reviews.length - 1 ? '1px solid var(--line)' : 'none', paddingBottom: i < reviews.length - 1 ? 18 : 0 }}>
-                <p className="font-serif italic text-[16.5px] leading-[1.4] text-ink m-0">"{rv.comment}"</p>
-                <div className="flex items-center gap-[9px] mt-[11px]">
-                  <button
-                    onClick={() => navigate(`/profile/${rv.user}`)}
-                    className="flex items-center gap-[9px] bg-transparent border-0 p-0 cursor-pointer"
-                  >
-                    <Avatar name={rv.username} size={26} />
-                    <span className="font-body font-semibold text-[12.5px] text-ink">@{rv.username}</span>
-                  </button>
-                  <Stars n={rv.stars} />
-                  <span className="font-body text-[11.5px] text-ink2 ml-auto">{rv.attempts} attempts</span>
-                </div>
+      <BlurFade inView className="mt-16">
+        <SectionLabel right={reviews.length}>Reviews</SectionLabel>
+        <div className="space-y-3">
+          {reviews.map(rv => (
+            <Card key={rv.id} className="p-6">
+              <p className="text-lg leading-snug">“{rv.comment}”</p>
+              <div className="mt-4 flex items-center gap-3">
+                <button onClick={() => navigate(`/profile/${rv.user}`)} className="flex cursor-pointer items-center gap-2">
+                  <Avatar name={rv.username} size={28} />
+                  <span className="text-sm font-medium">@{rv.username}</span>
+                </button>
+                <Stars n={rv.stars} />
+                <span className="ml-auto text-xs text-muted">{rv.attempts} attempts</span>
               </div>
-            ))}
-            {reviews.length === 0 && (
-              <p className="font-serif italic text-sm text-ink3">No reviews yet.</p>
-            )}
-          </div>
-          <Btn full variant="ghost" onClick={() => setShowReviewModal(true)}>+ Write a review</Btn>
+            </Card>
+          ))}
+          {reviews.length === 0 && <Empty>No reviews yet.</Empty>}
         </div>
-      </div>
+        <Btn full variant="ghost" className="mt-4" onClick={() => setShowReviewModal(true)}>Write a review</Btn>
+      </BlurFade>
 
       {showSendModal && (
         <Modal title="Log your send" subtitle="How many attempts did it take?" onClose={() => { setShowSendModal(false); setSendError(null); }}>
-          {sendError && <p className="font-serif italic text-danger text-[13px] mb-[10px]">{sendError}</p>}
+          {sendError && <ErrorText>{sendError}</ErrorText>}
           <Field label="Attempts" value={attempts} onChange={setAttempts} placeholder="e.g. 5" type="number" />
-          <div className="flex gap-[10px]">
-            <Btn full onClick={handleLogSend}>Log send</Btn>
+          <div className="flex gap-3">
             <Btn full variant="ghost" onClick={() => { setShowSendModal(false); setSendError(null); }}>Cancel</Btn>
+            <Btn full onClick={handleLogSend}>Log send</Btn>
           </div>
         </Modal>
       )}
 
       {showReviewModal && (
         <Modal title="Write a review" subtitle="Share your beta on this climb" onClose={() => { setShowReviewModal(false); setReviewError(null); }}>
-          {reviewError && <p className="font-serif italic text-danger text-[13px] mb-[10px]">{reviewError}</p>}
-          <div className="flex flex-col gap-[14px]">
-            <Field label="Comment" value={comment} onChange={setComment} placeholder="What did you think?" textarea />
-            <div>
-              <p className="font-body font-bold text-[10px] tracking-[0.14em] uppercase text-ink2 mb-2">Stars</p>
-              <Stars n={stars} size={26} onPick={setStars} />
-            </div>
-            <Field label="Attempts" value={reviewAttempts} onChange={setReviewAttempts} placeholder="e.g. 3" type="number" />
-            <Field label="Video URL" optional value={videoUrl} onChange={setVideoUrl} placeholder="https://…" />
-            <div className="flex gap-[10px]">
-              <Btn full onClick={handleReview}>Submit</Btn>
-              <Btn full variant="ghost" onClick={() => { setShowReviewModal(false); setReviewError(null); }}>Cancel</Btn>
-            </div>
+          {reviewError && <ErrorText>{reviewError}</ErrorText>}
+          <Field label="Comment" value={comment} onChange={setComment} placeholder="What did you think?" textarea />
+          <div>
+            <span className="mb-1.5 block text-sm font-medium">Rating</span>
+            <Stars n={stars} size={28} onPick={setStars} />
+          </div>
+          <Field label="Attempts" value={reviewAttempts} onChange={setReviewAttempts} placeholder="e.g. 3" type="number" />
+          <Field label="Video URL" optional value={videoUrl} onChange={setVideoUrl} placeholder="https://…" />
+          <div className="flex gap-3">
+            <Btn full variant="ghost" onClick={() => { setShowReviewModal(false); setReviewError(null); }}>Cancel</Btn>
+            <Btn full onClick={handleReview}>Submit</Btn>
           </div>
         </Modal>
       )}
-    </div>
+    </PageShell>
   );
 }
 

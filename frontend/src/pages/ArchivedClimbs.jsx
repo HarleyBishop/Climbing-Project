@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import api from '../api';
 import ClimbCard from '../components/ClimbDashboardComponents/ClimbCard';
 import { PageShell } from '../components/ui/PageShell';
 import { PageSkeleton } from '../components/Skeleton';
-import { ErrorScreen } from '../components/ui/primitives';
+import { Empty, ErrorScreen } from '../components/ui/primitives';
 
 function ArchivedClimbs() {
   const { gymId, wallId } = useParams();
@@ -36,17 +36,11 @@ function ArchivedClimbs() {
   if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
 
   return (
-    <PageShell
-      back backLabel="Back to gym" backPath={`/gym/${gymId}`}
-      eyebrow={wallName ? `${wallName} · old routes` : 'Old routes'}
-      title="Archived climbs"
-    >
+    <PageShell back backLabel="Back to gym" backPath={`/gym/${gymId}`} eyebrow={wallName || 'Old routes'} title="Archived climbs">
       {climbs.length === 0 ? (
-        <p className="font-serif italic text-sm text-ink3 text-center py-12">
-          No archived climbs on this wall yet.
-        </p>
+        <Empty>No archived climbs on this wall yet.</Empty>
       ) : (
-        <div className="grid grid-cols-2 gap-[13px]">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {climbs.map(climb => (
             <ClimbCard key={climb.id} climb={climb} gymId={gymId} wallId={wallId} setLabel />
           ))}

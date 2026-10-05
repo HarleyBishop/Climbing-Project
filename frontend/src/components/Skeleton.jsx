@@ -1,33 +1,32 @@
-function Bar({ style = {} }) {
-  return <div className="animate-pulse rounded-lg" style={{ background: 'var(--line-soft)', ...style }} />;
+import { cn } from '../lib/utils';
+
+function Bar({ className }) {
+  return <div className={cn('animate-pulse rounded-lg bg-black/[.06]', className)} />;
 }
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-[15px] p-[15px] mb-[11px] border" style={{ background: 'var(--card)', borderColor: 'var(--line)' }}>
-      <div className="flex items-center gap-3">
-        <Bar style={{ width: 11, height: 11, borderRadius: '50%' }} />
-        <div className="flex-1">
-          <Bar style={{ height: 15, width: '55%', marginBottom: 8 }} />
-          <Bar style={{ height: 11, width: '75%' }} />
-        </div>
-        <Bar style={{ height: 22, width: 48, borderRadius: 999 }} />
+    <div className="mb-3 flex items-center gap-4 rounded-2xl bg-white p-5 ring-1 ring-line/60">
+      <Bar className="size-3 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Bar className="h-4 w-1/2" />
+        <Bar className="h-3 w-3/4" />
       </div>
+      <Bar className="h-6 w-14 rounded-full" />
     </div>
   );
 }
 
 export function PageSkeleton() {
   return (
-    <div className="min-h-screen" style={{ background: 'var(--sheet)' }}>
-      <div style={{ height: 160, background: 'var(--sky)' }} />
-      <div className="rounded-[22px_22px_0_0] shadow-[0_-8px_24px_rgba(40,40,30,.10)] px-5 pt-[22px] -mt-5" style={{ background: 'var(--sheet)' }}>
-        <div className="max-w-[640px] mx-auto">
-          <Bar style={{ height: 28, width: '40%', marginBottom: 24 }} />
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
+    <div className="min-h-screen">
+      <div className="h-14 border-b border-black/5 bg-white/70" />
+      <div className="mx-auto max-w-3xl px-5 pt-16">
+        <Bar className="mb-3 h-4 w-24" />
+        <Bar className="mb-12 h-12 w-2/3" />
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
       </div>
     </div>
   );

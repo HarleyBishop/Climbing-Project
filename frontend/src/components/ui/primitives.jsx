@@ -1,256 +1,293 @@
-import { useState } from 'react';
-import { HOLD } from '../../theme';
+import { createPortal } from 'react-dom';
+import { motion } from 'motion/react';
+import { cn } from '../../lib/utils';
+import { HOLD } from '../../lib/holds';
 
-export function Eyebrow({ children, color, style }) {
-  return (
-    <p
-      className="font-body font-bold text-[10.5px] tracking-[0.16em] uppercase m-0 text-ink2"
-      style={{ ...(color && { color }), ...style }}
-    >
-      {children}
-    </p>
-  );
+// Shared building blocks. Every component accepts `className`, merged with
+// cn() so callers can override spacing/layout without inline styles.
+// Colours come from the tokens in styles/style.css; design conventions and
+// the Magic UI porting process are documented in frontend/README.md.
+
+export function Eyebrow({ children, className }) {
+  return <p className={cn('text-xs font-semibold uppercase tracking-wider text-muted', className)}>{children}</p>;
 }
 
-export function SectionLabel({ children, right, style }) {
+export function SectionLabel({ children, right, className }) {
   return (
-    <div className="flex items-baseline justify-between mb-3" style={style}>
-      <Eyebrow>{children}</Eyebrow>
-      {right}
+    <div className={cn('mb-4 flex items-baseline justify-between', className)}>
+      <h2 className="text-xl font-semibold text-ink">{children}</h2>
+      {right && <span className="text-sm text-muted">{right}</span>}
     </div>
   );
 }
 
-export function Divider({ m = 20 }) {
-  return <div className="h-px bg-line" style={{ margin: `${m}px 0` }} />;
+export function Divider({ className }) {
+  return <hr className={cn('my-10 border-line', className)} />;
 }
 
-export function Btn({ children, onClick, full, variant = 'solid', size = 'md', style, disabled, type = 'button' }) {
-  const base = 'font-body font-bold inline-flex items-center justify-center gap-[7px] whitespace-nowrap transition-all duration-150 box-border';
-  const sizes = {
-    sm: 'text-[13px] px-[14px] py-2 rounded-[10px]',
-    md: 'text-[14.5px] px-[18px] py-3 rounded-[13px]',
-  };
-  const variants = {
-    solid:  'text-white bg-primary border-0 shadow-[0_6px_15px_color-mix(in_srgb,var(--primary)_23%,transparent)]',
-    ghost:  'text-ink bg-white/55 border border-line',
-    danger: 'text-white bg-[#bb5b46] border-0',
-    accent: 'text-white bg-accent border-0',
-  };
+const BTN_SIZES = {
+  sm: 'h-8 px-4 text-sm',
+  md: 'h-11 px-6 text-[15px]',
+};
+const BTN_VARIANTS = {
+  solid: 'bg-ink text-white hover:bg-ink/85',
+  accent: 'bg-accent text-white hover:bg-accent/90',
+  ghost: 'bg-white text-ink ring-1 ring-line hover:bg-surface',
+  danger: 'bg-danger text-white hover:bg-danger/90',
+};
+
+export function Btn({ children, onClick, full, variant = 'solid', size = 'md', className, disabled, type = 'button' }) {
   return (
     <button
       type={type}
-      onClick={disabled ? undefined : onClick}
-      className={`${base} ${sizes[size] || sizes.md} ${variants[variant]} ${full ? 'w-full' : ''} ${disabled ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}
-      style={style}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'inline-flex cursor-pointer items-center justify-center gap-2 rounded-full font-medium whitespace-nowrap transition active:scale-[.98] disabled:cursor-default disabled:opacity-40',
+        BTN_SIZES[size],
+        BTN_VARIANTS[variant],
+        full && 'w-full',
+        className
+      )}
     >
       {children}
     </button>
   );
 }
 
-export function Chip({ children, tone = 'soft', style }) {
-  const toneClass = {
-    soft:      'bg-white/60 text-ink2 border-line',
-    accent:    'bg-primary-soft text-primary-d border-transparent',
-    open:      'bg-good-bg text-good border-transparent',
-    closed:    'bg-black/5 text-ink3 border-transparent',
-    upcoming:  'bg-info-bg text-info border-transparent',
-    qualifier: 'bg-primary-soft text-primary-d border-transparent',
-    finals:    'bg-info-bg text-info border-transparent',
-    you:       'bg-primary-soft text-primary-d border-transparent',
-    good:      'bg-good-bg text-good border-transparent',
-    info:      'bg-info-bg text-info border-transparent',
-    advances:  'bg-info-bg text-info border-transparent',
-    danger:    'bg-[rgba(187,91,70,.12)] text-danger border-transparent',
-  };
+const CHIP_TONES = {
+  soft: 'bg-surface text-muted',
+  accent: 'bg-accent-soft text-accent',
+  you: 'bg-accent-soft text-accent',
+  qualifier: 'bg-accent-soft text-accent',
+  open: 'bg-good-soft text-good',
+  good: 'bg-good-soft text-good',
+  upcoming: 'bg-info-soft text-info',
+  finals: 'bg-info-soft text-info',
+  info: 'bg-info-soft text-info',
+  advances: 'bg-info-soft text-info',
+  closed: 'bg-surface text-faint',
+  danger: 'bg-danger-soft text-danger',
+};
+
+export function Chip({ children, tone = 'soft', className }) {
   return (
-    <span
-      className={`font-body font-semibold text-[11.5px] px-[11px] py-[3px] rounded-full border whitespace-nowrap ${toneClass[tone] || toneClass.soft}`}
-      style={style}
-    >
+    <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap', CHIP_TONES[tone] || CHIP_TONES.soft, className)}>
       {children}
     </span>
   );
 }
 
-export function Card({ children, style, onClick, hover, border }) {
+// White rounded card with the soft layered shadow from Magic UI's bento card.
+// `onClick` makes it interactive: it lifts slightly on hover.
+export function Card({ children, className, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`bg-card border border-line rounded-[15px] shadow-[0_4px_14px_rgba(40,40,30,.06)] transition-colors duration-150 ${onClick ? 'cursor-pointer' : ''} ${hover ? 'hover:border-primary' : ''}`}
-      style={{ ...(border && { borderColor: border }), ...style }}
+      className={cn(
+        'rounded-2xl bg-white [box-shadow:0_0_0_1px_rgba(0,0,0,.03),0_2px_4px_rgba(0,0,0,.04),0_8px_16px_rgba(0,0,0,.04)]',
+        onClick && 'cursor-pointer transition duration-200 hover:-translate-y-0.5 hover:[box-shadow:0_0_0_1px_rgba(0,0,0,.04),0_4px_8px_rgba(0,0,0,.05),0_16px_32px_rgba(0,0,0,.08)]',
+        className
+      )}
     >
       {children}
     </div>
   );
 }
 
-export function Field({ label, value, onChange, placeholder, type = 'text', textarea, hint, optional, style }) {
-  const inputClass = 'w-full bg-card border border-line rounded-[11px] px-[14px] py-[11px] font-body font-medium text-[14.5px] text-ink outline-none box-border resize-none';
+export const inputClass =
+  'w-full rounded-xl bg-white px-4 py-3 text-[15px] text-ink ring-1 ring-line outline-none transition placeholder:text-faint focus:ring-2 focus:ring-accent';
+
+export function Field({ label, value, onChange, placeholder, type = 'text', textarea, hint, optional, className }) {
   return (
-    <div className="mb-4" style={style}>
+    <label className={cn('block', className)}>
       {label && (
-        <label className="block font-body font-bold text-[10px] tracking-[0.14em] uppercase text-ink2 mb-[6px]">
-          {label}{optional && <span className="text-ink3 font-semibold"> · optional</span>}
-        </label>
+        <span className="mb-1.5 block text-sm font-medium text-ink">
+          {label}{optional && <span className="font-normal text-faint"> · optional</span>}
+        </span>
       )}
       {textarea
-        ? <textarea value={value} placeholder={placeholder} onChange={onChange && (e => onChange(e.target.value))} className={`${inputClass} h-20`} />
-        : <input type={type} value={value} placeholder={placeholder} onChange={onChange && (e => onChange(e.target.value))} className={inputClass} />
-      }
-      {hint && <p className="font-serif italic text-[12.5px] text-ink3 mt-[6px] mb-0">{hint}</p>}
-    </div>
+        ? <textarea value={value} placeholder={placeholder} onChange={e => onChange?.(e.target.value)} className={cn(inputClass, 'h-24 resize-none')} />
+        : <input type={type} value={value} placeholder={placeholder} onChange={e => onChange?.(e.target.value)} className={inputClass} />}
+      {hint && <span className="mt-1.5 block text-sm text-muted">{hint}</span>}
+    </label>
   );
 }
 
+// iOS-style switch.
 export function Toggle({ on, onChange }) {
   return (
-    <div
-      onClick={() => onChange && onChange(!on)}
-      className="w-11 h-6 rounded-full cursor-pointer flex items-center p-[2px] transition-colors duration-150 shrink-0"
-      style={{ background: on ? 'var(--primary)' : 'rgba(0,0,0,.16)' }}
+    <button
+      type="button"
+      onClick={() => onChange?.(!on)}
+      className={cn('flex h-[31px] w-[51px] shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors', on ? 'bg-good' : 'bg-line')}
     >
-      <div
-        className="w-5 h-5 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.2)] transition-transform duration-[180ms]"
-        style={{ transform: on ? 'translateX(20px)' : 'translateX(0)' }}
-      />
-    </div>
+      <span className={cn('size-[27px] rounded-full bg-white shadow transition-transform', on && 'translate-x-5')} />
+    </button>
   );
 }
 
-export function Avatar({ name, size = 34, onClick }) {
+export function Avatar({ name, size = 36, onClick, className }) {
   return (
     <div
       onClick={onClick}
-      className="rounded-full bg-white/72 border border-line flex items-center justify-center font-body font-bold text-ink shrink-0"
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.36), cursor: onClick ? 'pointer' : 'default' }}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
+      className={cn('flex shrink-0 items-center justify-center rounded-full bg-linear-to-br from-neutral-200 to-neutral-300 font-semibold text-ink', onClick && 'cursor-pointer', className)}
     >
       {(name || '').slice(0, 2).toUpperCase()}
     </div>
   );
 }
 
-export function Stars({ n, size = 13, onPick }) {
+export function Stars({ n, size = 14, onPick }) {
   return (
-    <span className="inline-flex gap-px" style={{ letterSpacing: 1, fontSize: size }}>
+    <span className="inline-flex gap-0.5" style={{ fontSize: size }}>
       {[1, 2, 3, 4, 5].map(s => (
         <span
           key={s}
           onClick={onPick ? () => onPick(s) : undefined}
-          className="leading-none"
-          style={{ color: s <= n ? 'var(--primary)' : 'rgba(0,0,0,.13)', cursor: onPick ? 'pointer' : 'default' }}
+          className={cn('leading-none', s <= n ? 'text-accent' : 'text-line', onPick && 'cursor-pointer')}
         >★</span>
       ))}
     </span>
   );
 }
 
+// Sheet that springs in over a blurred backdrop. Portalled to <body> because
+// page content sits inside BlurFade, whose transform/filter would otherwise
+// become the containing block for `position: fixed` and misplace the modal.
 export function Modal({ title, subtitle, children, onClose }) {
-  return (
-    <div
+  return createPortal(
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       onClick={onClose}
-      className="fixed inset-0 z-[60] bg-[rgba(30,24,20,.5)] flex items-center justify-center p-5"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 backdrop-blur-sm sm:items-center"
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 320 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-[330px] bg-sheet rounded-[18px] border border-line px-[22px] pt-[22px] pb-6 shadow-[0_24px_60px_rgba(20,16,12,.4)]"
+        className="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl"
       >
-        <h2 className="font-display font-normal text-[23px] m-0 text-ink">{title}</h2>
-        {subtitle && <p className="font-serif italic text-sm text-ink2 mt-1 mb-0">{subtitle}</p>}
-        <div className="mt-4">{children}</div>
-      </div>
-    </div>
+        <h2 className="text-2xl font-semibold">{title}</h2>
+        {subtitle && <p className="mt-1 text-muted">{subtitle}</p>}
+        <div className="mt-6 space-y-4">{children}</div>
+      </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
 export function GradePills({ grades, value, onPick }) {
   return (
-    <div className="flex gap-[7px] flex-wrap">
-      {grades.map(g => {
-        const sel = value === g;
-        return (
-          <button
-            key={g}
-            type="button"
-            onClick={() => onPick && onPick(g)}
-            className={`font-body font-bold text-[13px] px-[13px] py-[7px] rounded-full cursor-pointer border transition-all duration-[120ms] ${
-              sel
-                ? 'border-primary bg-primary text-white shadow-[0_4px_11px_color-mix(in_srgb,var(--primary)_23%,transparent)]'
-                : 'border-line bg-card text-ink'
-            }`}
-          >
-            V{g}
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap gap-2">
+      {grades.map(g => (
+        <button
+          key={g}
+          type="button"
+          onClick={() => onPick?.(g)}
+          className={cn(
+            'h-9 min-w-12 cursor-pointer rounded-full px-3 text-sm font-medium transition',
+            value === g ? 'bg-ink text-white' : 'bg-white text-ink ring-1 ring-line hover:bg-surface'
+          )}
+        >
+          V{g}
+        </button>
+      ))}
     </div>
   );
 }
 
 export function ColourSwatches({ value, onPick }) {
   return (
-    <div className="flex gap-[11px] flex-wrap">
-      {Object.entries(HOLD).map(([name, hex]) => {
-        const sel = value === name;
-        return (
-          <button
-            key={name}
-            type="button"
-            onClick={() => onPick && onPick(name)}
-            title={name}
-            className="w-8 h-8 rounded-full cursor-pointer transition-all duration-[120ms] shadow-[0_2px_5px_rgba(0,0,0,.15)]"
-            style={{
-              background: hex,
-              border: `2.5px solid ${sel ? 'var(--ink)' : 'transparent'}`,
-              transform: sel ? 'scale(1.12)' : 'none',
-            }}
-          />
-        );
-      })}
+    <div className="flex flex-wrap gap-3">
+      {Object.entries(HOLD).map(([name, hex]) => (
+        <button
+          key={name}
+          type="button"
+          title={name}
+          onClick={() => onPick?.(name)}
+          style={{ background: hex }}
+          className={cn(
+            'size-9 cursor-pointer rounded-full ring-offset-2 transition',
+            value === name ? 'scale-110 ring-2 ring-ink' : 'hover:scale-105'
+          )}
+        />
+      ))}
     </div>
   );
 }
 
-export function Tabs({ tabs, active, onChange }) {
+// Apple-style segmented control. The selected background is a single motion
+// element with a shared layoutId, so it slides between options instead of
+// jumping. `layoutId` must be unique per control on the page.
+export function Segmented({ options, value, onChange, layoutId = 'segmented', className }) {
   return (
-    <div className="flex gap-1 border-b border-line mb-[22px]">
-      {tabs.map(t => {
-        const sel = active === t.key;
-        return (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => onChange(t.key)}
-            className={`bg-transparent border-0 border-b-2 -mb-px cursor-pointer px-3 py-[9px] font-body text-[13.5px] transition-all duration-[120ms] ${
-              sel ? 'border-b-primary font-bold text-ink' : 'border-b-transparent font-semibold text-ink2'
-            }`}
-          >
-            {t.label}
-          </button>
-        );
-      })}
+    <div className={cn('inline-flex w-full rounded-full bg-black/5 p-1', className)}>
+      {options.map(o => (
+        <button
+          key={o.key}
+          type="button"
+          onClick={() => onChange(o.key)}
+          className={cn('relative flex-1 cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors', value === o.key ? 'text-ink' : 'text-muted hover:text-ink')}
+        >
+          {value === o.key && (
+            <motion.span layoutId={layoutId} transition={{ type: 'spring', damping: 30, stiffness: 400 }} className="absolute inset-0 rounded-full bg-white shadow-sm" />
+          )}
+          <span className="relative">{o.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
 
-export function Empty({ children }) {
-  return <p className="font-serif italic text-[15px] text-ink3 text-center py-7">{children}</p>;
+// Tabs are a segmented control with tab-shaped data ({ key, label }).
+export function Tabs({ tabs, active, onChange }) {
+  return <Segmented options={tabs} value={active} onChange={onChange} layoutId="tabs" className="mb-8" />;
+}
+
+// Big number + small label, used for stat rows.
+export function Stat({ value, label, className }) {
+  return (
+    <div className={cn('rounded-2xl bg-white px-4 py-5 text-center ring-1 ring-line/60', className)}>
+      <p className="text-3xl font-semibold tracking-tight">{value}</p>
+      <p className="mt-1 text-xs font-medium text-muted">{label}</p>
+    </div>
+  );
+}
+
+// Thin bar that grows to `pct` when scrolled into view.
+export function ProgressBar({ pct, colour }) {
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-black/5">
+      <motion.div
+        initial={{ width: 0 }}
+        whileInView={{ width: `${pct}%` }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="h-full rounded-full bg-accent"
+        style={colour && { background: colour }}
+      />
+    </div>
+  );
+}
+
+export function Empty({ children, className }) {
+  return <p className={cn('py-10 text-center text-muted', className)}>{children}</p>;
+}
+
+export function ErrorText({ children }) {
+  return <p className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">{children}</p>;
 }
 
 export function ErrorScreen({ message, onRetry }) {
   return (
-    <div className="min-h-screen bg-sheet flex items-center justify-center">
-      <div className="text-center px-6">
-        <p className="font-serif italic text-danger text-sm mb-4">{message}</p>
-        {onRetry && (
-          <button
-            onClick={onRetry}
-            className="font-body font-bold text-[13.5px] px-5 py-[10px] rounded-[12px] bg-primary text-white border-0 cursor-pointer"
-          >
-            Retry
-          </button>
-        )}
+    <div className="flex min-h-screen items-center justify-center px-6 text-center">
+      <div>
+        <p className="mb-5 text-danger">{message}</p>
+        {onRetry && <Btn onClick={onRetry}>Try again</Btn>}
       </div>
     </div>
   );

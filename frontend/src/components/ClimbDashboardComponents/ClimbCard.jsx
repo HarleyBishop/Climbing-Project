@@ -1,40 +1,36 @@
 import { useNavigate } from 'react-router-dom';
-import { HOLD, GRAIN } from '../../theme';
+import { holdColour } from '../../lib/holds';
 import { Card } from '../ui/primitives';
+
+const fmtDay = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 
 function ClimbCard({ climb, gymId, wallId, setLabel }) {
   const navigate = useNavigate();
-  const hold = HOLD[climb.colour] || '#cd6f3f';
+  const hold = holdColour(climb.colour);
 
   return (
-    <div>
-      {setLabel && (
-        <p className="font-serif italic text-[11.5px] text-ink3 m-0 mb-[5px]">
-          Set {new Date(climb.set_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-        </p>
-      )}
-      <Card hover onClick={() => navigate(`/gym/${gymId}/wall/${wallId}/climb/${climb.id}`)} style={{ overflow: 'hidden' }}>
+    <Card onClick={() => navigate(`/gym/${gymId}/wall/${wallId}/climb/${climb.id}`)} className="group overflow-hidden">
+      <div className="relative h-28 overflow-hidden">
         {climb.image_url ? (
-          <img src={climb.image_url} alt={climb.name} className="w-full block object-cover" style={{ height: 78 }} />
+          <img src={climb.image_url} alt={climb.name} className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
-          <div className="relative overflow-hidden" style={{ height: 78 }}>
-            <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${hold} 0%, ${hold} 60%, rgba(0,0,0,.16) 130%)` }} />
-            <div className="absolute inset-0" style={{ background: 'radial-gradient(80% 70% at 78% 14%, rgba(255,255,255,.30), transparent 60%)' }} />
-            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: GRAIN, backgroundSize: '160px 160px', opacity: 0.12, mixBlendMode: 'soft-light' }} />
-            <div className="absolute bottom-2 left-2 flex gap-[6px]">
-              <span className="font-body font-bold text-[10.5px] px-2 py-[2px] rounded-full text-white" style={{ background: 'rgba(0,0,0,.28)' }}>{climb.colour}</span>
-              <span className="font-body font-bold text-[10.5px] px-2 py-[2px] rounded-full text-white" style={{ background: 'rgba(0,0,0,.28)' }}>V{climb.suggested_grade}</span>
-            </div>
-          </div>
+          // No photo: a glossy tile in the hold colour.
+          <div
+            className="size-full transition-transform duration-500 group-hover:scale-105"
+            style={{ background: `radial-gradient(120% 90% at 80% 0%, rgba(255,255,255,.45), transparent 55%), ${hold}` }}
+          />
         )}
-        <div className="px-3 pt-[10px] pb-3">
-          <p className="font-display font-normal text-[15.5px] m-0 text-ink leading-[1.1] truncate">{climb.name}</p>
-          <p className="font-body text-[11.5px] text-ink2 mt-1 mb-0">
-            Setter V{climb.suggested_grade}{climb.community_grade ? ` · Community V${climb.community_grade}` : ''}
-          </p>
-        </div>
-      </Card>
-    </div>
+        <span className="absolute bottom-2 left-2 rounded-full bg-black/40 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
+          V{climb.suggested_grade}
+        </span>
+      </div>
+      <div className="p-4">
+        <p className="truncate font-semibold">{climb.name}</p>
+        <p className="mt-0.5 text-xs text-muted">
+          {setLabel ? `Set ${fmtDay(climb.set_at)}` : climb.community_grade ? `Community V${climb.community_grade}` : climb.colour}
+        </p>
+      </div>
+    </Card>
   );
 }
 

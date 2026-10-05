@@ -84,6 +84,8 @@ The Django config file. Key things set here:
 The root URL router. Maps URL prefixes to the app's URL file:
 - `/api/token/` → JWT login endpoint (from simplejwt)
 - `/api/token/refresh/` → exchange a refresh token for a new access token
+- `/api/token/blacklist/` → invalidate a refresh token on logout
+- `/api/schema/`, `/api/docs/`, `/api/redoc/` → the auto-generated OpenAPI schema, Swagger UI and ReDoc (drf-spectacular). They're built from the live code, so they can't drift out of date.
 - Everything else under `/api/` → `climbingAPI/urls.py`
 
 ### `backend/climbingAPI/models.py`
@@ -187,8 +189,13 @@ Auto-generated files that track DB schema changes over time. Each migration is a
 
 ### Core
 
+For the design system (tokens, conventions) and how the Magic UI components were ported, see [`frontend/README.md`](frontend/README.md).
+
 **`src/main.jsx`**
-The entry point. Just mounts the `<App />` component into `index.html`.
+The entry point. Mounts `<App />` inside the Google OAuth provider, plus the toast container. It also imports `styles/style.css`.
+
+**`src/styles/style.css`**
+All global styling. The `@theme` block defines the design tokens (colours, font, Magic UI keyframes). Tailwind turns each `--color-*` into utilities like `text-muted` or `bg-surface`. There is one light theme, so this is the only place colours are defined.
 
 **`src/App.jsx`**
 Defines all the routes (URLs → page components). Two route guards:
@@ -203,42 +210,48 @@ Two exported functions:
 - `isSetter()` — reads the `is_setter` claim from the decoded token. Used by `SetterRoute` and throughout the UI to show/hide setter-only buttons.
 
 **`src/api.js`**
-Creates a configured Axios instance. The key part is a request interceptor that automatically attaches `Authorization: Bearer <token>` to every outgoing request. Import `api` instead of `axios` everywhere so this always applies.
+Creates a configured Axios instance. The key part is a request interceptor that automatically attaches `Authorization: Bearer <token>` to every outgoing request. Import `api` instead of `axios` everywhere so this always applies. The exception is the public auth endpoints (register, login, refresh, Google): the header is skipped there because Django rejects an expired token with 401 even on endpoints that don't need one.
 
 **`src/constants.js`**
-Just exports the string `'access'` as `ACCESS_TOKEN` — the localStorage key where the JWT is stored. Keeps it in one place so it doesn't get misspelled.
+Exports the localStorage keys for the access and refresh tokens (`ACCESS_TOKEN`, `REFRESH_TOKEN`). Keeps them in one place so they don't get misspelled.
+
+**`src/lib/utils.js`**
+`cn(...classes)`: combines `clsx` (conditional classes) with `tailwind-merge` (conflict resolution). It's used by every shared component so a `className` passed in overrides the defaults.
+
+**`src/lib/holds.js`**
+Maps hold colour names ("Blue", "Pink"…) to hex values, plus `holdColour(name)` with a fallback. Used for climb tiles, colour strips and the climb page hero.
 
 ### Pages
 
 **`src/pages/Login.jsx`**
-Login form. On success, stores the access and refresh tokens in localStorage and redirects to `/`.
+Login page (`AuthScaffold` layout). On success, stores the access and refresh tokens in localStorage and redirects to where the user was going (or `/`).
 
 **`src/pages/Register.jsx`**
-Registration form. Same flow — on success, logs the user straight in.
+Registration page. The user picks Climber or Setter with a segmented control. On success it redirects to `/login`.
 
 **`src/pages/Home.jsx`**
-Landing page after login. Shows two lists of gyms:
-1. "Your gyms" — gyms where you've logged at least one send (from `MyGymsView`)
-2. All gyms — the full list (from `GymListCreateView`)
-Also shows the map of all gyms with lat/lng set.
+Landing page after login. It opens with a bento grid (Magic UI): a "Following activity" tile, and either "Create a gym" (setters) or "Your profile". Below that:
+1. A search box over all gyms
+2. "Your gyms": gyms where you've logged at least one send (from `MyGymsView`), paginated
+3. A map of every gym with lat/lng set
 
 **`src/pages/GymPage.jsx`**
-The main page for a specific gym. Shows all walls and their active climbs. Setters see "Add climb" buttons and "Archive wall" buttons. Also links to the gym's competitions and leaderboard.
+The main page for a specific gym. A horizontally scrolling wall picker, then the selected wall's active climbs as a grid of hold-coloured tiles. Setters see "Add climb" and "Archive all" (with a confirmation step). Links to the gym's competitions and leaderboard.
 
 **`src/pages/AddClimb.jsx`**
-Setter-only form to create a new climb on a specific wall. Setter-gated at the route level too.
+Setter-only form to create a new climb on a specific wall, with a live preview tile that updates as you pick the colour, grade and name. Setter-gated at the route level too.
 
 **`src/pages/ClimbPage.jsx`**
-Detail page for a single climb. Shows grade, colour, image, community grade, sends, reviews, and videos. Climbers can log a send, vote on grade, and leave reviews here.
+Detail page for a single climb. A large hero tile in the hold colour (or the photo), stats that count up (setter grade, community grade, sends, reviews), then grade voting, beta videos and reviews. Climbers log sends and write reviews through modals.
 
 **`src/pages/ArchivedClimbs.jsx`**
 Shows past (archived) climbs for a wall. Useful for looking back at old problems and your sends on them.
 
 **`src/pages/Profile.jsx`**
-User profile page. Works for both your own profile (`/profile`) and others (`/profile/:userId`). Shows bio, send history, and rank. Setters see a password change form. Other users see a follow/unfollow button.
+User profile page. Works for both your own profile (`/profile`) and others (`/profile/:userId`). A centred header (avatar, rank badge, points, home gym, bio, follower counts), stats that count up, then sends, reviews and videos. On your own profile you can edit your bio and change your password. On other people's profiles you get a follow/unfollow button.
 
 **`src/pages/Leaderboard.jsx`**
-The gym-wide points leaderboard. Shows ranked list of users with their points, send count, and rank badge (Iron → Magnus).
+The gym-wide points leaderboard. The top three are shown as a podium, the rest as a ranked list with animated progress bars and rank badges (Iron → Magnus). Below that are the rank tiers and the points-per-grade table.
 
 **`src/pages/Feed.jsx`**
 Social activity feed. Shows recent sends and reviews from people you follow, in reverse chronological order.
@@ -247,7 +260,7 @@ Social activity feed. Shows recent sends and reviews from people you follow, in 
 Lists all competitions for a gym, grouped by status (upcoming / open / closed). Setters see a "Create competition" button.
 
 **`src/pages/CompetitionPage.jsx`**
-Detail page for a competition. Shows climbs in the comp, lets registered climbers log sends, and shows the leaderboard. Setters see a judging panel for finals events.
+Detail page for a competition, split into Info / Climbs / Leaderboard tabs (a sliding segmented control). Registered climbers log sends from the Climbs tab. The leaderboard polls every 30 seconds so it stays live during an event. Setters can add/remove climbs, show a registration QR code, and use a judging panel for finals events.
 
 **`src/pages/CreateCompetition.jsx`**
 Setter-only form to create a new competition. Sets type (qualifier vs finals), dates, divisions, and rounds.
@@ -260,41 +273,34 @@ The 404 page. Catches any URL that doesn't match a route.
 **`src/components/ProtectedRoute.jsx`**
 Checks if the access token exists and hasn't expired. If not, redirects to `/login`. Wraps every authenticated page in `App.jsx`.
 
-**`src/components/Navbar.jsx`**
-The top nav bar shown on all authenticated pages. Shows links to Home, Feed, Profile. Setters also see a "Create Gym" link.
-
-**`src/components/Skeleton.jsx`**
-A loading placeholder UI — shown while data is fetching to avoid a blank page flash.
+**`src/components/ui/PageShell.jsx`**
+The layout every page uses:
+- `PageShell`: a sticky frosted-glass nav bar (logo, Gyms, Feed, setter badge, sign out, avatar), then an optional back link, eyebrow and big headline, then the page content. The header and content blur-fade in on load.
+- `AuthScaffold`: the login/register layout. Headline, feature marquee and form on one side, illustration on the other (stacked on mobile).
 
 **`src/components/ui/primitives.jsx`**
-A small design system of reusable base components (buttons, cards, inputs, etc.) used throughout the app.
+The shared component library: `Btn`, `Card`, `Chip`, `Field`, `Toggle`, `Avatar`, `Stars`, `Modal`, `GradePills`, `ColourSwatches`, `Segmented` / `Tabs`, `Stat`, `ProgressBar`, `Empty`, `ErrorText`, `ErrorScreen`, plus the shared `inputClass`. Every component accepts `className`. `Modal` renders through a portal into `<body>` (see the gotcha in the frontend README).
 
-**`src/components/ui/PageShell.jsx`**
-Wraps every page with consistent padding and layout.
+**`src/components/magicui/`**
+Animated components ported from [Magic UI](https://magicui.design): `blur-fade`, `number-ticker`, `bento-grid`, `marquee`, `animated-shiny-text`. Each file's header links to its source and lists what was changed. The frontend README explains how to add more.
 
-**`src/components/ui/Sky.jsx`**
-The animated sky background shown on some pages.
+**`src/components/Skeleton.jsx`**
+Loading placeholders (`PageSkeleton`, `CardSkeleton`) shown while data is fetching, so the page structure is visible before data arrives.
 
-**`src/components/HomePageComponents/GymCard.jsx` / `GymCardMini.jsx`**
-Card components for displaying a gym in a list. Full vs compact variants.
+**`src/components/HomePageComponents/GymCard.jsx`**
+A gym in a list: hold-colour dot, name, location, wall/climb counts, open/closed chip.
 
 **`src/components/HomePageComponents/GymList.jsx`**
-Container that renders a list of GymCards.
+The home page's gym search plus the paginated "Your gyms" list.
 
 **`src/components/HomePageComponents/GymMap.jsx`**
-Map component that plots gyms with `lat`/`lng` set.
+Leaflet map plotting gyms with `lat`/`lng` set. It flies to the user's location when geolocation is allowed. OpenStreetMap tiles are muted with CSS filters to match the UI.
 
 **`src/components/CreateGymComponents/CreateGymForm.jsx`**
-The form inside the Create Gym page.
-
-**`src/components/CreateGymComponents/AddWallForm.jsx`**
-Form to add a wall to an existing gym.
-
-**`src/components/CreateGymComponents/WallCard.jsx`**
-Displays a single wall within a gym page.
+The Create Gym page: gym details, coordinates, open/closed toggle, and an inline form for adding walls before the gym is created.
 
 **`src/components/ClimbDashboardComponents/ClimbCard.jsx`**
-Displays a single climb in a list with grade, colour, and send status.
+A climb tile: photo or hold-colour gradient, grade badge, name, and community grade (or set date on the archived page).
 
 **`src/components/LoginRegisterComponents/LoginRegisterForm.jsx`**
 Shared form component used by both Login and Register pages.
@@ -317,8 +323,7 @@ Two key exports:
 | V9–V10 | 100 |
 | V11+ | 150 |
 
-**`src/theme/index.js`**
-Colour palette and design tokens shared across the app.
+It also contains the pixel-art SVG rank icons and the `RankBadge` component. These rank colours are the one place colours are set in JS rather than in `style.css`, because each tier has its own colour.
 
 ---
 
@@ -343,20 +348,26 @@ Colour palette and design tokens shared across the app.
 - Password change: correct current password required, wrong password rejected, too-short password rejected
 - Follow: creates relationship, idempotent (double-follow = one row), can't follow yourself, unfollow removes row
 - Profile: can only edit your own bio, `is_following` flag in response is accurate
+- Activity feed: only followed users appear, sends and reviews are merged newest-first, review-only fields (comment, stars) don't appear on send items
 
 **`backend/tests/test_views_gym.py`** — Integration tests for gym, wall, climb, and grade vote endpoints.
 - Gym create: setter can, climber can't, `added_by` set from `request.user` not the POST body
 - Gym detail: any authenticated user can GET, only creator can PATCH (others get 404)
 - Climb list: active-only by default, archived endpoint returns only archived
 - Archive wall: setter archives all active climbs at once, already-archived not double-counted
-- Grade votes: first vote sets `community_grade`, re-vote updates (not duplicates), average calculated correctly
+- Grade votes: first vote sets `community_grade`, re-vote updates (not duplicates), average calculated correctly, deleting a vote recalculates it
 - My Gyms: returns gyms where user has sends, no duplicates when multiple sends at same gym
 
 **`backend/tests/test_views_leaderboard.py`** — Tests the three leaderboard algorithms (the most business-critical code).
 - **Gym leaderboard**: correct points per grade tier, archived sends excluded, sorted descending
 - **Qualifier leaderboard**: sorted by points, tiebreaker is fewest attempts, `advances` flag correct, ranks sequential
 - **Finals leaderboard (IFSC)**: all four tiebreak levels tested — more tops wins, then fewer top attempts, then more zones, then fewer zone attempts
+- **Finals result entry**: a judge re-saving a result updates it rather than failing, climbers can't record results, climbs from another competition are rejected
 - **Comp send guards**: can't send to closed comp, can't send without registering, registered user can send
+
+**`backend/tests/test_api_docs.py`**: guards the API documentation.
+- The OpenAPI schema must generate with zero warnings and pass validation. drf-spectacular silently skips views it can't understand, so without this test a new endpoint could quietly vanish from the docs.
+- `/api/schema/`, `/api/docs/` and `/api/redoc/` are reachable without logging in.
 
 ### Frontend Tests
 
@@ -378,7 +389,7 @@ Colour palette and design tokens shared across the app.
 **`.github/workflows/tests.yml`** — Runs on every push and pull request to master.
 
 Two jobs run in parallel:
-1. **Django Tests** — spins up Ubuntu, installs Python, runs `manage.py test` against SQLite (no PostgreSQL needed in CI)
+1. **Django Tests** — spins up Ubuntu, installs Python, runs `manage.py test tests` against SQLite (no PostgreSQL needed in CI). It discovers every `tests/test_*.py`, so new test files run automatically.
 2. **Vitest Tests** — installs Node.js, runs `npm test`
 
 Then, only if both pass AND the push is to master:
@@ -394,9 +405,9 @@ These deploy hook URLs are stored as GitHub repository secrets (`RENDER_DEPLOY_H
 ```
 # Backend
 cd backend
-pip install -r requirements.txt
+pip install -r requirements-local.txt
 python manage.py migrate
-python manage.py runserver       # runs on :8000
+python manage.py runserver       # runs on :8000; API docs at /api/docs/
 
 # Frontend (separate terminal)
 cd frontend
@@ -404,4 +415,6 @@ npm install
 npm run dev                      # runs on :5173
 ```
 
-Frontend `.env` needs `VITE_API_URL=http://localhost:8000` to point at the local backend.
+No `VITE_API_URL` is needed locally: `vite.config.js` proxies every `/api` request from :5173 to the Django server on :8000. `VITE_API_URL` is only set in production, where the frontend (Vercel) and backend (Render) are on different domains.
+
+**If login suddenly returns 401** after a long break, an expired token is probably still in the browser's localStorage. `api.js` now skips the token on auth endpoints so this shouldn't happen, but clearing localStorage in DevTools fixes it either way.

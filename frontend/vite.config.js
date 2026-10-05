@@ -42,8 +42,8 @@ export default defineConfig({
         name: "Beta Board",
         short_name: "Beta Board",
         description: "Track your climbing sends, compete at your gym, and rank up.",
-        theme_color: "#78350f",
-        background_color: "#fff7ed",
+        theme_color: "#f5f5f7",
+        background_color: "#f5f5f7",
         display: "standalone",
         // standalone removes the browser chrome so it feels like a native app.
         orientation: "portrait",

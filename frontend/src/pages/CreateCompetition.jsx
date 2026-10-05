@@ -2,7 +2,42 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
 import { PageShell } from '../components/ui/PageShell';
-import { Btn, Field, Eyebrow, Card } from '../components/ui/primitives';
+import { Btn, Field, Segmented, Chip, ErrorText, inputClass } from '../components/ui/primitives';
+import { cn } from '../lib/utils';
+
+// A text box + Add button that builds up a list of names (divisions, rounds).
+function ListBuilder({ label, placeholder, items, onChange, numbered }) {
+  const [draft, setDraft] = useState('');
+  const add = () => {
+    if (draft.trim()) { onChange([...items, draft.trim()]); setDraft(''); }
+  };
+  return (
+    <div>
+      <span className="mb-1.5 block text-sm font-medium">{label}</span>
+      {items.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {items.map((item, i) => (
+            <Chip key={i} className="flex items-center gap-1.5 py-1 pl-3 text-sm">
+              {numbered && `${i + 1}. `}{item}
+              <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))} className="cursor-pointer text-faint hover:text-danger">✕</button>
+            </Chip>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+          className={cn(inputClass, 'flex-1')}
+        />
+        <Btn variant="ghost" onClick={add}>Add</Btn>
+      </div>
+    </div>
+  );
+}
 
 function CreateCompetition() {
   const { gymId } = useParams();
@@ -17,18 +52,9 @@ function CreateCompetition() {
   const [topX, setTopX] = useState('');
   const [linkedQualifier, setLinkedQualifier] = useState('');
   const [divisions, setDivisions] = useState([]);
-  const [newDivision, setNewDivision] = useState('');
   const [rounds, setRounds] = useState([]);
-  const [newRound, setNewRound] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  const addDivision = () => {
-    if (newDivision.trim()) { setDivisions([...divisions, newDivision.trim()]); setNewDivision(''); }
-  };
-  const addRound = () => {
-    if (newRound.trim()) { setRounds([...rounds, newRound.trim()]); setNewRound(''); }
-  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -46,8 +72,7 @@ function CreateCompetition() {
       if (compType === 'qualifier' && topX) payload.top_x_advance = parseInt(topX);
       if (compType === 'finals' && linkedQualifier) payload.linked_qualifier = parseInt(linkedQualifier);
 
-      const res = await api.post(`/api/gyms/${gymId}/competitions/`, payload);
-      const compId = res.data.id;
+      const compId = (await api.post(`/api/gyms/${gymId}/competitions/`, payload)).data.id;
       await Promise.all([
         ...divisions.map(name => api.post(`/api/competitions/${compId}/divisions/`, { name })),
         ...rounds.map((name, i) => api.post(`/api/competitions/${compId}/rounds/`, { name, order: i + 1 })),
@@ -55,100 +80,44 @@ function CreateCompetition() {
       navigate(`/gym/${gymId}/competitions/${compId}`);
     } catch (err) {
       const data = err.response?.data;
-      if (data) {
-        const key = Object.keys(data)[0];
-        setError(data[key]?.[0] || 'Failed to create competition.');
-      } else {
-        setError('Failed to create competition.');
-      }
+      setError((data && Object.values(data)[0]?.[0]) || 'Failed to create competition.');
     } finally { setLoading(false); }
   };
 
-  const inputClass = 'w-full bg-card border border-line rounded-[11px] px-[14px] py-[11px] font-body text-sm text-ink outline-none box-border';
-
   return (
-    <PageShell back backLabel="Competitions" backPath={`/gym/${gymId}/competitions`} eyebrow="New competition" title="Create competition">
-      {error && (
-        <div className="rounded-[12px] px-[14px] py-[10px] mb-5 font-serif italic text-[13.5px] text-danger" style={{ background: 'rgba(187,91,70,.10)', border: '1px solid rgba(187,91,70,.25)' }}>
-          {error}
-        </div>
-      )}
+    <PageShell back backLabel="Competitions" backPath={`/gym/${gymId}/competitions`} eyebrow="New competition" title="Create a competition">
+      <div className="space-y-6">
+        {error && <ErrorText>{error}</ErrorText>}
 
-      <div className="flex flex-col gap-[18px]">
         <div>
-          <Eyebrow style={{ marginBottom: 8, fontSize: 10 }}>Competition type</Eyebrow>
-          <div className="flex gap-[10px]">
-            {[['qualifier', 'Qualifier'], ['finals', 'Finals / World Cup']].map(([k, lab]) => {
-              const sel = compType === k;
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setCompType(k)}
-                  className={`flex-1 font-body font-semibold text-[13px] px-2 py-[10px] rounded-[11px] cursor-pointer border transition-all duration-[120ms] ${
-                    sel ? 'border-primary bg-primary text-white' : 'border-line bg-card text-ink'
-                  }`}
-                >
-                  {lab}
-                </button>
-              );
-            })}
-          </div>
+          <span className="mb-1.5 block text-sm font-medium">Format</span>
+          <Segmented
+            layoutId="comp-type"
+            value={compType}
+            onChange={setCompType}
+            options={[{ key: 'qualifier', label: 'Qualifier' }, { key: 'finals', label: 'Finals / World Cup' }]}
+          />
         </div>
 
         <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Spring Open 2026" />
         <Field label="Description" value={description} onChange={setDescription} placeholder="Brief overview of the comp" textarea />
         <Field label="Rules" optional value={rules} onChange={setRules} placeholder="Format, scoring notes…" textarea />
 
-        <div className="flex gap-[10px]">
-          <div className="flex-1">
-            <label className="block font-body font-bold text-[10px] tracking-[0.14em] uppercase text-ink2 mb-[6px]">Starts</label>
-            <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} className={inputClass} />
-          </div>
-          <div className="flex-1">
-            <label className="block font-body font-bold text-[10px] tracking-[0.14em] uppercase text-ink2 mb-[6px]">Ends</label>
-            <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} className={inputClass} />
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Starts" type="datetime-local" value={startDate} onChange={setStartDate} />
+          <Field label="Ends" type="datetime-local" value={endDate} onChange={setEndDate} />
         </div>
 
-        {compType === 'qualifier' && (
-          <Field label="Top X advance" optional value={topX} onChange={setTopX} placeholder="e.g. 20" type="number" />
-        )}
-        {compType === 'finals' && (
-          <Field label="Linked qualifier ID" optional value={linkedQualifier} onChange={setLinkedQualifier} placeholder="Competition ID" type="number" />
-        )}
+        {compType === 'qualifier'
+          ? <Field label="Top X advance to finals" optional value={topX} onChange={setTopX} placeholder="e.g. 20" type="number" />
+          : <Field label="Linked qualifier ID" optional value={linkedQualifier} onChange={setLinkedQualifier} placeholder="Competition ID" type="number" />}
 
-        <div>
-          <Eyebrow style={{ marginBottom: 10 }}>Divisions</Eyebrow>
-          {divisions.map((d, i) => (
-            <Card key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', marginBottom: 8 }}>
-              <span className="font-serif italic text-sm text-ink">{d}</span>
-              <button type="button" onClick={() => setDivisions(divisions.filter((_, j) => j !== i))} className="bg-transparent border-0 cursor-pointer font-body font-semibold text-xs text-danger">Remove</button>
-            </Card>
-          ))}
-          <div className="flex gap-2">
-            <input type="text" placeholder="e.g. Open, Women's" value={newDivision} onChange={e => setNewDivision(e.target.value)} onKeyDown={e => e.key === 'Enter' && addDivision()} className={`${inputClass} flex-1`} />
-            <Btn variant="ghost" onClick={addDivision}>Add</Btn>
-          </div>
-        </div>
+        <ListBuilder label="Divisions" placeholder="e.g. Open, Youth" items={divisions} onChange={setDivisions} />
+        <ListBuilder label="Rounds · optional" placeholder="e.g. Semi-final" items={rounds} onChange={setRounds} numbered />
 
-        <div>
-          <Eyebrow style={{ marginBottom: 10 }}>Rounds · optional</Eyebrow>
-          {rounds.map((r, i) => (
-            <Card key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', marginBottom: 8 }}>
-              <span className="font-serif italic text-sm text-ink">{i + 1}. {r}</span>
-              <button type="button" onClick={() => setRounds(rounds.filter((_, j) => j !== i))} className="bg-transparent border-0 cursor-pointer font-body font-semibold text-xs text-danger">Remove</button>
-            </Card>
-          ))}
-          <div className="flex gap-2">
-            <input type="text" placeholder="e.g. Semi-final, Final" value={newRound} onChange={e => setNewRound(e.target.value)} onKeyDown={e => e.key === 'Enter' && addRound()} className={`${inputClass} flex-1`} />
-            <Btn variant="ghost" onClick={addRound}>Add</Btn>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-[10px] mt-1">
-          <Btn full onClick={handleSubmit} disabled={loading}>{loading ? 'Creating…' : 'Create Competition'}</Btn>
+        <div className="flex gap-3 pt-4">
           <Btn full variant="ghost" onClick={() => navigate(`/gym/${gymId}/competitions`)}>Cancel</Btn>
+          <Btn full onClick={handleSubmit} disabled={loading}>{loading ? 'Creating…' : 'Create competition'}</Btn>
         </div>
       </div>
     </PageShell>
