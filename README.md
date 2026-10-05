@@ -2,7 +2,7 @@
 
 A full-stack web application for indoor bouldering gyms — track climbs, log sends, vote on grades, run competitions, and rank up on a gamified leaderboard. Built as a portfolio project to gain hands-on experience across a broad modern web stack.
 
-**Live app:** [betaboard.vercel.app](https://v3inmygym.vercel.app) &nbsp;|&nbsp; **Backend API:** hosted on Render
+**Live app:** [v3inmygym.vercel.app](https://v3inmygym.vercel.app) &nbsp;|&nbsp; **Backend API:** hosted on Render
 
 ---
 
@@ -11,7 +11,7 @@ A full-stack web application for indoor bouldering gyms — track climbs, log se
 Beta Board gives climbers and gym setters a shared platform for a single gym ecosystem:
 
 - **Setters** create gyms, add walls and climbs, archive old routes, and run competitions
-- **Climbers** log sends (with attempt counts), vote on community grades, write reviews, and upload beta videos
+- **Climbers** log sends (with attempt counts), vote on community grades, write reviews, and share beta videos (linked per climb)
 - **Everyone** can see where they rank on a per-gym leaderboard with a gamified tier system (Iron through Magnus)
 - **Competitions** support both Qualifier format (points-based live leaderboard) and Finals format (IFSC-style judging with tops/zones/attempts)
 - The **map** shows all gyms plotted with a Leaflet interactive map, flying to the user's current location on load
