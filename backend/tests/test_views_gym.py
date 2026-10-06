@@ -6,10 +6,12 @@ what, and that the annotated counts (wall_count, climb_count) are correct.
 
 Run with: python manage.py test tests.test_views_gym
 """
-from django.test import TestCase
+from unittest.mock import patch
+
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
-from climbingAPI.models import Gym, Wall, Climb, Send
+from climbingAPI.models import Gym, Wall, Climb, Send, Video
 
 User = get_user_model()
 
@@ -178,6 +180,28 @@ class ClimbListTest(TestCase):
         self.assertEqual(res.status_code, 403)
 
 
+# ─── Wall create ────────────────────────────────────────────────────────────────
+
+class WallCreateTest(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        self.setter = make_user('setter', is_setter=True)
+        self.gym = make_gym(self.setter)
+        self.client.force_authenticate(user=self.setter)
+        self.url = f'/api/gyms/{self.gym.id}/walls/'
+
+    def test_description_can_be_blank(self):
+        # The create-gym form sends '' when the optional description is left empty.
+        res = self.client.post(self.url, {'name': 'Cave', 'description': ''})
+        self.assertEqual(res.status_code, 201)
+
+    def test_description_can_be_omitted(self):
+        res = self.client.post(self.url, {'name': 'Cave'})
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(Wall.objects.get(name='Cave').description, '')
+
+
 # ─── Archive all wall climbs ───────────────────────────────────────────────────
 # ArchiveWallClimbsView bulk-sets is_archived=True using a single .update() call.
 # Only setters can do this; already-archived climbs must not be double-counted.
@@ -314,3 +338,53 @@ class MyGymsTest(TestCase):
 
         res = self.client.get('/api/gyms/my-gyms/')
         self.assertEqual(len(res.data), 1)
+
+
+
+# ─── Video upload URL ───────────────────────────────────────────────────────────
+# Supabase is mocked out: these tests check our validation and wiring, not the
+# Storage API itself.
+
+@override_settings(SUPABASE_URL='https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY='test-key')
+class VideoUploadURLTest(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        self.setter = make_user('setter', is_setter=True)
+        self.climber = make_user('climber')
+        self.gym = make_gym(self.setter)
+        self.wall = make_wall(self.gym)
+        self.climb = make_climb(self.wall, self.setter)
+        self.client.force_authenticate(user=self.climber)
+        self.url = f'/api/gyms/{self.gym.id}/walls/{self.wall.id}/climbs/{self.climb.id}/videos/upload-url/'
+
+    @patch('climbingAPI.storage.create_video_upload', return_value=('https://up', 'https://public/v.mp4'))
+    def test_returns_signed_and_public_urls(self, mock_create):
+        res = self.client.post(self.url, {'content_type': 'video/mp4', 'size': 1000})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data, {'upload_url': 'https://up', 'video_url': 'https://public/v.mp4'})
+        mock_create.assert_called_once_with(self.climb.id, 'video/mp4')
+        # Nothing is saved until the client confirms the upload finished.
+        self.assertFalse(Video.objects.exists())
+
+    @patch('climbingAPI.storage.create_video_upload')
+    def test_rejects_non_video_type(self, mock_create):
+        res = self.client.post(self.url, {'content_type': 'image/png', 'size': 1000})
+        self.assertEqual(res.status_code, 400)
+        mock_create.assert_not_called()
+
+    @patch('climbingAPI.storage.create_video_upload')
+    def test_rejects_oversized_file(self, mock_create):
+        res = self.client.post(self.url, {'content_type': 'video/mp4', 'size': 51 * 1024 * 1024})
+        self.assertEqual(res.status_code, 400)
+        mock_create.assert_not_called()
+
+    def test_unauthenticated_rejected(self):
+        self.client.force_authenticate(user=None)
+        res = self.client.post(self.url, {'content_type': 'video/mp4', 'size': 1000})
+        self.assertEqual(res.status_code, 401)
+
+    @override_settings(SUPABASE_URL='', SUPABASE_SERVICE_ROLE_KEY='')
+    def test_503_when_storage_not_configured(self):
+        res = self.client.post(self.url, {'content_type': 'video/mp4', 'size': 1000})
+        self.assertEqual(res.status_code, 503)

@@ -180,9 +180,7 @@ function ClimbPage() {
         {videos.length === 0 ? <Empty>No videos yet.</Empty> : (
           <div className="grid gap-3 sm:grid-cols-2">
             {videos.map(video => (
-              <video key={video.id} controls className="aspect-video w-full rounded-2xl bg-black">
-                <source src={video.video_url} type="video/mp4" />
-              </video>
+              <video key={video.id} src={video.video_url} controls className="aspect-video w-full rounded-2xl bg-black" />
             ))}
           </div>
         )}

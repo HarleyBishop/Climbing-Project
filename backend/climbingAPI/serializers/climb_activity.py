@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from ..models import GradeVote, Send, Review, Video
+from ..storage import MAX_VIDEO_BYTES, VIDEO_EXTENSIONS
 from .common import ClimbContextFields
 
 
@@ -80,3 +81,15 @@ class VideoSerializer(ClimbContextFields, serializers.ModelSerializer):
             'gym_id', 'gym_name',
         ]
         read_only_fields = ['uploaded_at', 'climb', 'user']
+
+
+class VideoUploadRequestSerializer(serializers.Serializer):
+    content_type = serializers.ChoiceField(choices=list(VIDEO_EXTENSIONS))
+    # The client reports the size before uploading so oversized files are
+    # rejected early. The bucket's own size limit is what actually enforces it.
+    size = serializers.IntegerField(min_value=1, max_value=MAX_VIDEO_BYTES)
+
+
+class VideoUploadResponseSerializer(serializers.Serializer):
+    upload_url = serializers.URLField(help_text='PUT the file here (valid for 2 hours).')
+    video_url = serializers.URLField(help_text='Public URL to save via POST .../videos/ once the upload finishes.')

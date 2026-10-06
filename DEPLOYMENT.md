@@ -41,6 +41,19 @@ If your password contains symbols like `@`, `#` or `/`, URL-encode them (or pick
 
 **Free tier caveat:** Supabase pauses a free project after 7 days without database activity. Data is kept; restore it with one click from the Supabase dashboard.
 
+### Step 1b: Create the video storage bucket (optional)
+
+Climb videos are stored in Supabase Storage. Postgres only holds each video's URL. The browser uploads the file straight to Supabase through a signed URL from the API, so large files never pass through Render.
+
+1. In Supabase, go to **Storage** → **New bucket**
+2. Name: `climb-videos`, and turn **Public bucket** on so the videos can be played without signing in
+3. Under the bucket's settings, set:
+   - **Restrict file size**: `50 MB` (the free-tier maximum, and the same limit the API checks)
+   - **Allowed MIME types**: `video/mp4, video/webm, video/quicktime`
+4. Go to **Project Settings** → **API** and copy the **Project URL** and the **service_role** key for Step 3
+
+The free tier includes 1 GB of storage and 5 GB of bandwidth per month. If you skip this step, the upload endpoint returns 503 and the rest of the app works normally.
+
 ### Step 2: Create Web Service on Render
 
 1. Click **New +** → **Web Service**
@@ -67,6 +80,8 @@ In the Render dashboard for your service, go to **Environment** and add:
 | `ALLOWED_HOSTS` | `<your-render-domain>.onrender.com` | Will be assigned by Render (format: `climbing-api.onrender.com`) |
 | `CORS_ALLOWED_ORIGINS` | `https://<your-vercel-domain>.vercel.app` | Your Vercel frontend domain |
 | `DATABASE_URL` | `<supabase-session-pooler-uri>` | From Step 1 |
+| `SUPABASE_URL` | `https://<project-ref>.supabase.co` | From Step 1b (optional) |
+| `SUPABASE_SERVICE_ROLE_KEY` | `<service-role-key>` | From Step 1b. This key is secret: backend only, never in Vercel |
 
 ### Step 4: Google OAuth Setup
 

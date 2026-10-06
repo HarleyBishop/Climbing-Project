@@ -8,11 +8,19 @@ Each follows the same two-view shape:
                        can edit/delete their own entries and nobody else's.
 """
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from .. import storage
+from ..exceptions import StorageUnavailable
 from ..models import Climb, GradeVote, Send, Review, Video
-from ..serializers.climb_activity import GradeVoteSerializer, SendSerializer, ReviewSerializer, VideoSerializer
+from ..serializers.climb_activity import (
+    GradeVoteSerializer, SendSerializer, ReviewSerializer, VideoSerializer,
+    VideoUploadRequestSerializer, VideoUploadResponseSerializer,
+)
 
 # Everything ClimbContextFields reads, fetched in one JOIN.
 CLIMB_CONTEXT = ('climb__wall__gym',)
@@ -125,6 +133,32 @@ class VideoListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         climb = get_object_or_404(Climb, id=self.kwargs['climb_id'])
         serializer.save(climb=climb, user=self.request.user)
+
+
+class VideoUploadURLView(APIView):
+    """
+    Step 1 of a video upload. Returns a signed URL the browser PUTs the file
+    to directly, plus the public URL to save with POST .../videos/ once the
+    upload finishes. Doing it in two steps means a failed upload never leaves
+    a Video row pointing at a file that doesn't exist.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=VideoUploadRequestSerializer, responses=VideoUploadResponseSerializer)
+    def post(self, request, gym_id, wall_id, climb_id):
+        if not storage.is_configured():
+            raise StorageUnavailable('Video uploads are not configured on this server.')
+        climb = get_object_or_404(Climb, id=climb_id, wall_id=wall_id, wall__gym_id=gym_id)
+
+        serializer = VideoUploadRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            upload_url, video_url = storage.create_video_upload(
+                climb.id, serializer.validated_data['content_type'],
+            )
+        except storage.StorageError:
+            raise StorageUnavailable('Could not start the upload. Please try again.')
+        return Response(VideoUploadResponseSerializer({'upload_url': upload_url, 'video_url': video_url}).data)
 
 
 class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):

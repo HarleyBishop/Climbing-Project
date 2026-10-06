@@ -53,6 +53,7 @@ urlpatterns = [
     path(f'{CLIMB}/reviews/', climb_activity.ReviewListCreateView.as_view(), name='review-list'),
     path(f'{CLIMB}/reviews/<int:pk>/', climb_activity.ReviewDetailView.as_view(), name='review-detail'),
     path(f'{CLIMB}/videos/', climb_activity.VideoListCreateView.as_view(), name='video-list'),
+    path(f'{CLIMB}/videos/upload-url/', climb_activity.VideoUploadURLView.as_view(), name='video-upload-url'),
     path(f'{CLIMB}/videos/<int:pk>/', climb_activity.VideoDetailView.as_view(), name='video-detail'),
 
     # ─── Competitions ────────────────────────────────────────────────────────

@@ -22,6 +22,13 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
+# Supabase Storage holds the climb video files (see climbingAPI/storage.py).
+# If these are unset, video upload is turned off and the rest of the app
+# still works.
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_VIDEO_BUCKET = os.environ.get("SUPABASE_VIDEO_BUCKET", "climb-videos")
+
 # DEBUG defaults True locally (no env var set), False in production where the
 # host sets DEBUG=False. Running DEBUG=True in production leaks stack traces.
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'

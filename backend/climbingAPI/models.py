@@ -58,7 +58,9 @@ class Gym(models.Model):
 
 class Wall(models.Model):
     name = models.CharField(max_length=100)
-    description = models.CharField(max_length=100)
+    # blank=True is what makes DRF accept an empty string; default='' covers
+    # requests that omit the field entirely.
+    description = models.CharField(max_length=100, blank=True, default='')
     # CASCADE: a wall only exists within a gym, so deleting the gym should
     # remove all its walls (and by extension all climbs via Wall→Climb cascade).
     gym = models.ForeignKey('Gym', on_delete=models.CASCADE, related_name='walls')
