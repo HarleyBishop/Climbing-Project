@@ -169,7 +169,7 @@ export function Modal({ title, subtitle, children, onClose }) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', damping: 26, stiffness: 320 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl"
+        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl"
       >
         <h2 className="text-2xl font-semibold">{title}</h2>
         {subtitle && <p className="mt-1 text-muted">{subtitle}</p>}

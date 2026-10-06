@@ -388,3 +388,28 @@ class VideoUploadURLTest(TestCase):
     def test_503_when_storage_not_configured(self):
         res = self.client.post(self.url, {'content_type': 'video/mp4', 'size': 1000})
         self.assertEqual(res.status_code, 503)
+
+
+@override_settings(SUPABASE_URL='https://example.supabase.co', SUPABASE_VIDEO_BUCKET='climb-videos')
+class VideoCreateTest(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        setter = make_user('setter', is_setter=True)
+        self.climber = make_user('climber')
+        gym = make_gym(setter)
+        wall = make_wall(gym)
+        self.climb = make_climb(wall, setter)
+        self.client.force_authenticate(user=self.climber)
+        self.url = f'/api/gyms/{gym.id}/walls/{wall.id}/climbs/{self.climb.id}/videos/'
+
+    def test_climber_can_save_uploaded_video(self):
+        url = 'https://example.supabase.co/storage/v1/object/public/climb-videos/climbs/1/abc.mp4'
+        res = self.client.post(self.url, {'video_url': url})
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(Video.objects.get().user, self.climber)
+
+    def test_external_url_rejected(self):
+        res = self.client.post(self.url, {'video_url': 'https://youtube.com/watch?v=abc'})
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(Video.objects.exists())

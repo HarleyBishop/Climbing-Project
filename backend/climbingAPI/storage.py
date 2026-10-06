@@ -37,6 +37,10 @@ def is_configured():
     return bool(settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY)
 
 
+def public_video_prefix():
+    return f'{settings.SUPABASE_URL}/storage/v1/object/public/{settings.SUPABASE_VIDEO_BUCKET}/'
+
+
 def create_video_upload(climb_id, content_type):
     """
     Reserves a unique path for one video and returns (upload_url, public_url).
@@ -64,4 +68,4 @@ def create_video_upload(climb_id, content_type):
     except (requests.RequestException, ValueError, KeyError) as exc:
         raise StorageError(f'Could not create upload URL: {exc}')
 
-    return f'{base}{signed_path}', f'{base}/object/public/{bucket}/{path}'
+    return f'{base}{signed_path}', f'{public_video_prefix()}{path}'

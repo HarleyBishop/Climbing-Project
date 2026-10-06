@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from ..models import GradeVote, Send, Review, Video
-from ..storage import MAX_VIDEO_BYTES, VIDEO_EXTENSIONS
+from ..storage import MAX_VIDEO_BYTES, VIDEO_EXTENSIONS, public_video_prefix
 from .common import ClimbContextFields
 
 
@@ -81,6 +81,14 @@ class VideoSerializer(ClimbContextFields, serializers.ModelSerializer):
             'gym_id', 'gym_name',
         ]
         read_only_fields = ['uploaded_at', 'climb', 'user']
+
+    def validate_video_url(self, value):
+        # Only accept files from our own bucket (i.e. ones that came through
+        # the upload-url flow). Arbitrary links were unreliable — YouTube and
+        # Instagram pages aren't playable in a <video> tag.
+        if not value.startswith(public_video_prefix()):
+            raise serializers.ValidationError('Videos must be uploaded through the app.')
+        return value
 
 
 class VideoUploadRequestSerializer(serializers.Serializer):

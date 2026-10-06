@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
 import { PageShell } from '../components/ui/PageShell';
 import { Btn, Field, GradePills, ColourSwatches, ErrorText } from '../components/ui/primitives';
 import { holdColour } from '../lib/holds';
-import { uploadClimbVideo, videoFileError, MAX_VIDEO_MB, VIDEO_TYPES } from '../lib/videoUpload';
+import { uploadClimbVideo } from '../lib/videoUpload';
+import { VideoPicker } from '../components/VideoPicker';
 
 const GRADES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -23,20 +24,6 @@ function AddClimb() {
   const [createdClimbId, setCreatedClimbId] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  // Object URLs keep the file in memory until revoked, so release the old
-  // preview whenever the file changes or the page unmounts.
-  const videoPreview = useMemo(() => video && URL.createObjectURL(video), [video]);
-  useEffect(() => () => videoPreview && URL.revokeObjectURL(videoPreview), [videoPreview]);
-
-  const handleVideoPick = (e) => {
-    const file = e.target.files[0];
-    e.target.value = ''; // lets the same file be re-picked after removing it
-    if (!file) return;
-    const problem = videoFileError(file);
-    setError(problem);
-    if (!problem) setVideo(file);
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -114,35 +101,7 @@ function AddClimb() {
           )}
         </div>
 
-        <div>
-          <span className="mb-1.5 block text-sm font-medium text-ink">
-            Beta video<span className="font-normal text-faint"> · optional</span>
-          </span>
-          {video ? (
-            <div className="space-y-3">
-              <video src={videoPreview} controls className="aspect-video w-full rounded-2xl bg-black" />
-              <div className="flex items-center justify-between text-sm text-muted">
-                <span className="truncate">{video.name} · {(video.size / 1024 / 1024).toFixed(1)} MB</span>
-                {!loading && (
-                  <button type="button" onClick={() => setVideo(null)} className="cursor-pointer text-accent hover:underline">Remove</button>
-                )}
-              </div>
-              {uploadProgress !== null && (
-                <div className="h-2 overflow-hidden rounded-full bg-line">
-                  <div className="h-full bg-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
-                </div>
-              )}
-            </div>
-          ) : (
-            // The hidden native input sits inside a label, so clicking
-            // anywhere on the dashed box opens the file picker.
-            <label className="flex h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line text-sm text-muted transition hover:bg-surface">
-              <span className="font-medium text-ink">Choose a video</span>
-              <span>MP4, WebM or MOV · up to {MAX_VIDEO_MB} MB</span>
-              <input type="file" accept={VIDEO_TYPES.join(',')} onChange={handleVideoPick} className="hidden" />
-            </label>
-          )}
-        </div>
+        <VideoPicker file={video} onChange={setVideo} onError={setError} progress={uploadProgress} locked={loading} />
 
         <div className="flex gap-3">
           <Btn full variant="ghost" onClick={() => navigate(`/gym/${gymId}`)}>{createdClimbId ? 'Skip' : 'Cancel'}</Btn>

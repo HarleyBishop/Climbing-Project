@@ -8,6 +8,8 @@ import { holdColour } from '../lib/holds';
 import { Card, Btn, SectionLabel, GradePills, Stars, Modal, Field, Avatar, Empty, ErrorText, ErrorScreen } from '../components/ui/primitives';
 import { BlurFade } from '../components/magicui/blur-fade';
 import { NumberTicker } from '../components/magicui/number-ticker';
+import { VideoPicker } from '../components/VideoPicker';
+import { uploadClimbVideo } from '../lib/videoUpload';
 
 const GRADES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -30,7 +32,12 @@ function ClimbPage() {
   const [comment, setComment] = useState('');
   const [stars, setStars] = useState(0);
   const [reviewAttempts, setReviewAttempts] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
+  const [video, setVideo] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  // Reviews aren't unique per user, so if the review saves but the video
+  // upload fails, the retry must skip re-posting the review.
+  const [reviewSaved, setReviewSaved] = useState(false);
 
   const { gymId, wallId, climbId } = useParams();
   const navigate = useNavigate();
@@ -85,21 +92,58 @@ function ClimbPage() {
     } catch { setSendError("Couldn't log your send. Please try again."); }
   };
 
+  const closeReviewModal = () => {
+    setShowReviewModal(false);
+    setReviewError(null);
+    // A saved review is already on the page, so drop its form state rather
+    // than leaving it to be submitted again next time the modal opens.
+    if (reviewSaved) {
+      setComment(''); setStars(0); setReviewAttempts(''); setVideo(null); setReviewSaved(false);
+    }
+  };
+
   const handleReview = async () => {
     setReviewError(null);
-    if (!comment.trim()) { setReviewError('Please write a comment.'); return; }
-    if (stars === 0) { setReviewError('Please select a star rating.'); return; }
-    if (!reviewAttempts || parseInt(reviewAttempts) < 1) { setReviewError('Please enter a valid number of attempts.'); return; }
+    if (!reviewSaved) {
+      if (!comment.trim()) { setReviewError('Please write a comment.'); return; }
+      if (stars === 0) { setReviewError('Please select a star rating.'); return; }
+      if (!reviewAttempts || parseInt(reviewAttempts) < 1) { setReviewError('Please enter a valid number of attempts.'); return; }
+    }
+    setSubmittingReview(true);
     try {
-      await api.post(`${base}/reviews/`, { comment, stars, attempts: parseInt(reviewAttempts) });
-      if (videoUrl) {
-        await api.post(`${base}/videos/`, { video_url: videoUrl });
-        setVideos((await api.get(`${base}/videos/`)).data);
+      if (!reviewSaved) {
+        await api.post(`${base}/reviews/`, { comment, stars, attempts: parseInt(reviewAttempts) });
+        setReviewSaved(true);
+        setReviews((await api.get(`${base}/reviews/`)).data);
       }
-      setReviews((await api.get(`${base}/reviews/`)).data);
-      setComment(''); setStars(0); setReviewAttempts(''); setVideoUrl('');
-      setShowReviewModal(false);
-    } catch { setReviewError("Couldn't submit your review. Please try again."); }
+    } catch {
+      setReviewError("Couldn't submit your review. Please try again.");
+      setSubmittingReview(false);
+      return;
+    }
+
+    if (video) {
+      try {
+        setUploadProgress(0);
+        await uploadClimbVideo(base, video, setUploadProgress);
+        setVideos((await api.get(`${base}/videos/`)).data);
+      } catch (err) {
+        setReviewError(err.response?.data?.detail || 'Review posted, but the video upload failed. Try again or remove the video.');
+        setUploadProgress(null);
+        setSubmittingReview(false);
+        return;
+      }
+    }
+    setComment(''); setStars(0); setReviewAttempts(''); setVideo(null);
+    setReviewSaved(false); setUploadProgress(null); setSubmittingReview(false);
+    setShowReviewModal(false);
+  };
+
+  const reviewSubmitLabel = () => {
+    if (uploadProgress !== null) return `Uploading… ${uploadProgress}%`;
+    if (submittingReview) return 'Submitting…';
+    if (reviewSaved) return video ? 'Retry video upload' : 'Done';
+    return 'Submit';
   };
 
   if (loading) return <PageSkeleton />;
@@ -219,7 +263,7 @@ function ClimbPage() {
       )}
 
       {showReviewModal && (
-        <Modal title="Write a review" subtitle="Share your beta on this climb" onClose={() => { setShowReviewModal(false); setReviewError(null); }}>
+        <Modal title="Write a review" subtitle="Share your beta on this climb" onClose={() => !submittingReview && closeReviewModal()}>
           {reviewError && <ErrorText>{reviewError}</ErrorText>}
           <Field label="Comment" value={comment} onChange={setComment} placeholder="What did you think?" textarea />
           <div>
@@ -227,10 +271,10 @@ function ClimbPage() {
             <Stars n={stars} size={28} onPick={setStars} />
           </div>
           <Field label="Attempts" value={reviewAttempts} onChange={setReviewAttempts} placeholder="e.g. 3" type="number" />
-          <Field label="Video URL" optional value={videoUrl} onChange={setVideoUrl} placeholder="https://…" />
+          <VideoPicker file={video} onChange={setVideo} onError={setReviewError} progress={uploadProgress} locked={submittingReview} />
           <div className="flex gap-3">
-            <Btn full variant="ghost" onClick={() => { setShowReviewModal(false); setReviewError(null); }}>Cancel</Btn>
-            <Btn full onClick={handleReview}>Submit</Btn>
+            <Btn full variant="ghost" onClick={closeReviewModal} disabled={submittingReview}>{reviewSaved ? 'Skip video' : 'Cancel'}</Btn>
+            <Btn full onClick={handleReview} disabled={submittingReview}>{reviewSubmitLabel()}</Btn>
           </div>
         </Modal>
       )}
