@@ -18,6 +18,7 @@ function AddClimb() {
   const [grade, setGrade] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [video, setVideo] = useState(null);
+  const [videoTitle, setVideoTitle] = useState('');
   const [uploadProgress, setUploadProgress] = useState(null);
   // Set once the climb is saved. If only the video upload then fails, the
   // next submit retries just the upload instead of creating a second climb.
@@ -48,7 +49,7 @@ function AddClimb() {
     if (video) {
       try {
         setUploadProgress(0);
-        await uploadClimbVideo(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}`, video, setUploadProgress);
+        await uploadClimbVideo(`/api/gyms/${gymId}/walls/${wallId}/climbs/${climbId}`, video, videoTitle, setUploadProgress);
       } catch (err) {
         setError(err.response?.data?.detail || 'Climb added, but the video upload failed. Try again or remove the video.');
         setUploadProgress(null);
@@ -101,7 +102,7 @@ function AddClimb() {
           )}
         </div>
 
-        <VideoPicker file={video} onChange={setVideo} onError={setError} progress={uploadProgress} locked={loading} />
+        <VideoPicker file={video} onChange={setVideo} onError={setError} title={videoTitle} onTitleChange={setVideoTitle} progress={uploadProgress} locked={loading} />
 
         <div className="flex gap-3">
           <Btn full variant="ghost" onClick={() => navigate(`/gym/${gymId}`)}>{createdClimbId ? 'Skip' : 'Cancel'}</Btn>

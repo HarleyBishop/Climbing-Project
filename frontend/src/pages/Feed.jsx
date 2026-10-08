@@ -6,18 +6,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import { Card, Avatar, Stars, Empty } from '../components/ui/primitives';
 import { BlurFade } from '../components/magicui/blur-fade';
 import { holdColour } from '../lib/holds';
-
-function timeAgo(iso) {
-  const seconds = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (seconds < 60) return 'just now';
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-}
+import { timeAgo } from '../lib/utils';
 
 function FeedItem({ item }) {
   const navigate = useNavigate();
@@ -32,16 +21,16 @@ function FeedItem({ item }) {
           <span className="text-left">
             <span className="block text-sm font-semibold">@{item.username}</span>
             <span className="block text-sm text-muted">
-              {isSend ? `sent in ${item.attempts} attempt${item.attempts !== 1 ? 's' : ''}` : 'left a review'}
+              {isSend ? `sent in ${item.attempts} attempt${item.attempts !== 1 ? 's' : ''}` : (item.comment ? 'left a review' : 'rated it')}
             </span>
           </span>
         </button>
         <span className="ml-auto text-xs text-faint">{timeAgo(item.timestamp)}</span>
       </div>
 
-      {!isSend && item.comment && (
+      {!isSend && (
         <div className="mb-4">
-          <p className="mb-1.5 text-lg leading-snug">“{item.comment}”</p>
+          {item.comment && <p className="mb-1.5 text-lg leading-snug">“{item.comment}”</p>}
           <Stars n={item.stars} />
         </div>
       )}

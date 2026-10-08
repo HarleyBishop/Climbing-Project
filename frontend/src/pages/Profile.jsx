@@ -198,7 +198,7 @@ function Profile() {
                 <p className="font-semibold">{rv.climb_name}</p>
                 <Stars n={rv.stars} />
               </div>
-              <p className="leading-snug">“{rv.comment}”</p>
+              {rv.comment && <p className="leading-snug">“{rv.comment}”</p>}
               <p className="mt-2 text-sm text-muted">{rv.wall_name} · {rv.gym_name}</p>
             </Card>
           ))}
@@ -211,7 +211,13 @@ function Profile() {
         {videos.length === 0 ? <Empty>No videos yet.</Empty> : (
           <div className="grid gap-3 sm:grid-cols-2">
             {videos.map(video => (
-              <video key={video.id} src={video.video_url} controls className="aspect-video w-full rounded-2xl bg-black" />
+              <Card key={video.id} className="overflow-hidden">
+                <video src={video.video_url} controls preload="metadata" className="aspect-video w-full bg-black" />
+                <button onClick={() => goToClimb(video)} className="block w-full cursor-pointer p-4 text-left">
+                  <p className="font-semibold">{video.title || 'Beta video'}</p>
+                  <p className="text-sm text-muted">{video.climb_name} · {video.wall_name} · {video.gym_name}</p>
+                </button>
+              </Card>
             ))}
           </div>
         )}

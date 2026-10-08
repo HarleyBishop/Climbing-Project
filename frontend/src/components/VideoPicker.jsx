@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { videoFileError, MAX_VIDEO_MB, VIDEO_TYPES } from '../lib/videoUpload';
+import { Field } from './ui/primitives';
 
 /**
  * File picker + preview + progress bar for a single climb video. Only picks
@@ -7,10 +8,11 @@ import { videoFileError, MAX_VIDEO_MB, VIDEO_TYPES } from '../lib/videoUpload';
  * order it after its own save.
  *   onChange(file | null)  — a valid file was picked, or the video was removed
  *   onError(message)       — the picked file failed type/size checks
+ *   title / onTitleChange  — caption saved with the video, shown once a file is picked
  *   progress               — 0–100 while uploading, null otherwise
  *   locked                 — hides "Remove" while a submit is in flight
  */
-export function VideoPicker({ file, onChange, onError, progress = null, locked }) {
+export function VideoPicker({ file, onChange, onError, title, onTitleChange, progress = null, locked }) {
   // Object URLs keep the file in memory until revoked, so release the old
   // preview whenever the file changes or the picker unmounts.
   const preview = useMemo(() => file && URL.createObjectURL(file), [file]);
@@ -33,6 +35,7 @@ export function VideoPicker({ file, onChange, onError, progress = null, locked }
       {file ? (
         <div className="space-y-3">
           <video src={preview} controls className="aspect-video w-full rounded-2xl bg-black" />
+          <Field value={title} onChange={onTitleChange} placeholder="Title, e.g. Heel hook on the crux" />
           <div className="flex items-center justify-between gap-3 text-sm text-muted">
             <span className="truncate">{file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB</span>
             {!locked && (

@@ -37,7 +37,7 @@ class GradeVoteListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        return GradeVote.objects.filter(climb_id=self.kwargs['climb_id'])
+        return GradeVote.objects.filter(climb_id=self.kwargs['climb_id']).select_related('user')
 
     def perform_create(self, serializer):
         climb = get_object_or_404(Climb, id=self.kwargs['climb_id'])
@@ -132,7 +132,7 @@ class VideoListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        return Video.objects.filter(climb_id=self.kwargs['climb_id']).select_related(*CLIMB_CONTEXT)
+        return Video.objects.filter(climb_id=self.kwargs['climb_id']).select_related('user', *CLIMB_CONTEXT)
 
     def perform_create(self, serializer):
         climb = get_object_or_404(Climb, id=self.kwargs['climb_id'])
@@ -182,4 +182,4 @@ class UserVideosView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Video.objects.filter(user_id=self.kwargs['user_id']).select_related(*CLIMB_CONTEXT)
+        return Video.objects.filter(user_id=self.kwargs['user_id']).select_related('user', *CLIMB_CONTEXT)

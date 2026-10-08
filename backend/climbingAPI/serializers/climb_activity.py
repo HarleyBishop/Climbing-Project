@@ -6,9 +6,13 @@ from .common import ClimbContextFields
 
 
 class GradeVoteSerializer(serializers.ModelSerializer):
+    # The climb page groups votes with sends and reviews per climber, so a
+    # climber who only voted still needs a name to show.
+    username = serializers.CharField(source='user.username', read_only=True)
+
     class Meta:
         model = GradeVote
-        fields = ['id', 'grade', 'created_at', 'climb', 'user']
+        fields = ['id', 'grade', 'created_at', 'climb', 'user', 'username']
         # climb and user are injected server-side — the client only sends grade.
         read_only_fields = ['created_at', 'climb', 'user']
 
@@ -69,13 +73,20 @@ class ReviewSerializer(ClimbContextFields, serializers.ModelSerializer):
         ]
         read_only_fields = ['climb', 'user', 'created_at']
 
+    def validate_stars(self, value):
+        if not 1 <= value <= 5:
+            raise serializers.ValidationError('Rating must be between 1 and 5 stars.')
+        return value
+
 
 class VideoSerializer(ClimbContextFields, serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+
     class Meta:
         model = Video
         fields = [
-            'id', 'video_url', 'uploaded_at',
-            'climb', 'user',
+            'id', 'video_url', 'title', 'uploaded_at',
+            'climb', 'user', 'username',
             'climb_id', 'climb_name',
             'wall_id', 'wall_name',
             'gym_id', 'gym_name',

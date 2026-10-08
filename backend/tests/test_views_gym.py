@@ -11,7 +11,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
-from climbingAPI.models import Gym, Wall, Climb, Send, Video
+from climbingAPI.models import Gym, Wall, Climb, Send, Review, Video
 
 User = get_user_model()
 
@@ -413,3 +413,37 @@ class VideoCreateTest(TestCase):
         res = self.client.post(self.url, {'video_url': 'https://youtube.com/watch?v=abc'})
         self.assertEqual(res.status_code, 400)
         self.assertFalse(Video.objects.exists())
+
+    def test_title_and_uploader_returned(self):
+        url = 'https://example.supabase.co/storage/v1/object/public/climb-videos/climbs/1/abc.mp4'
+        self.client.post(self.url, {'video_url': url, 'title': 'Crux heel hook'})
+        res = self.client.get(self.url)
+        self.assertEqual(res.data[0]['title'], 'Crux heel hook')
+        self.assertEqual(res.data[0]['username'], 'climber')
+
+
+# ─── Reviews ────────────────────────────────────────────────────────────────────
+
+class ReviewCreateTest(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        setter = make_user('setter', is_setter=True)
+        self.climber = make_user('climber')
+        gym = make_gym(setter)
+        wall = make_wall(gym)
+        climb = make_climb(wall, setter)
+        self.client.force_authenticate(user=self.climber)
+        self.url = f'/api/gyms/{gym.id}/walls/{wall.id}/climbs/{climb.id}/reviews/'
+
+    def test_rating_without_comment_allowed(self):
+        # The log-climb sheet lets climbers leave just a star rating.
+        res = self.client.post(self.url, {'stars': 4})
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(Review.objects.get().comment, '')
+
+    def test_stars_out_of_range_rejected(self):
+        for stars in (0, 6):
+            res = self.client.post(self.url, {'stars': stars, 'comment': 'x'})
+            self.assertEqual(res.status_code, 400)
+        self.assertFalse(Review.objects.exists())

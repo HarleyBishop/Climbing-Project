@@ -131,7 +131,8 @@ class Send(models.Model):
 
 
 class Review(models.Model):
-    comment = models.TextField()
+    # Optional so a climber can leave just a star rating when logging a climb.
+    comment = models.TextField(blank=True, default='')
     stars = models.IntegerField()
     attempts = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -145,6 +146,10 @@ class Review(models.Model):
 
 class Video(models.Model):
     video_url = models.URLField()
+    # Short caption so a climb's videos are distinguishable (e.g. "Heel hook
+    # on the crux"). Optional, and old videos have none, so the UI falls back
+    # to a generic label.
+    title = models.CharField(max_length=100, blank=True, default='')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     climb = models.ForeignKey('Climb', on_delete=models.CASCADE, related_name='videos')

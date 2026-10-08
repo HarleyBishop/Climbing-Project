@@ -21,7 +21,7 @@ export function videoFileError(file) {
  *   3. save the public URL as a Video row
  * If step 2 fails, nothing is written to our DB.
  */
-export async function uploadClimbVideo(climbPath, file, onProgress) {
+export async function uploadClimbVideo(climbPath, file, title, onProgress) {
   const { data } = await api.post(`${climbPath}/videos/upload-url/`, {
     content_type: file.type,
     size: file.size,
@@ -30,5 +30,5 @@ export async function uploadClimbVideo(climbPath, file, onProgress) {
     headers: { 'Content-Type': file.type },
     onUploadProgress: e => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)),
   });
-  await api.post(`${climbPath}/videos/`, { video_url: data.video_url });
+  await api.post(`${climbPath}/videos/`, { video_url: data.video_url, title: title.trim() });
 }
