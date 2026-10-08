@@ -7,6 +7,8 @@ Each follows the same two-view shape:
   ...DetailView      — only ever sees the current user's own rows, so users
                        can edit/delete their own entries and nobody else's.
 """
+import logging
+
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
@@ -21,6 +23,8 @@ from ..serializers.climb_activity import (
     GradeVoteSerializer, SendSerializer, ReviewSerializer, VideoSerializer,
     VideoUploadRequestSerializer, VideoUploadResponseSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 # Everything ClimbContextFields reads, fetched in one JOIN.
 CLIMB_CONTEXT = ('climb__wall__gym',)
@@ -157,6 +161,10 @@ class VideoUploadURLView(APIView):
                 climb.id, serializer.validated_data['content_type'],
             )
         except storage.StorageError:
+            # The client only gets a generic message, so log the real Supabase
+            # error (status + reason) for the Render logs. No LOGGING config is
+            # set, but Python's last-resort handler still sends ERROR to stderr.
+            logger.exception('Supabase signed upload URL request failed')
             raise StorageUnavailable('Could not start the upload. Please try again.')
         return Response(VideoUploadResponseSerializer({'upload_url': upload_url, 'video_url': video_url}).data)
 

@@ -66,6 +66,9 @@ def create_video_upload(climb_id, content_type):
         # in the query string.
         signed_path = resp.json()['url']
     except (requests.RequestException, ValueError, KeyError) as exc:
-        raise StorageError(f'Could not create upload URL: {exc}')
+        # Supabase explains failures (bucket not found, bad key) in the body,
+        # which raise_for_status() leaves out of its message.
+        body = getattr(getattr(exc, 'response', None), 'text', '')
+        raise StorageError(f'Could not create upload URL: {exc} {body}'.strip())
 
     return f'{base}{signed_path}', f'{public_video_prefix()}{path}'
